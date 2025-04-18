@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "calorista"
+version = "0.1.0"
+description = "ETL pipeline for authenticated FatSecret users that extracts real-time food log data, transforms raw entries with detailed nutritional metadata."
+authors = ["Karyna Zuyeva <kzueva54@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+packages = [{include = "calorista"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
