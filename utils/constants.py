@@ -1,0 +1,5 @@
+NAME="fatsecret"
+REQUEST_TOKEN_URL="https://www.fatsecret.com/oauth/request_token"
+ACCESS_TOKEN_URL="https://www.fatsecret.com/oauth/access_token"
+AUTHORIZE_URL="https://www.fatsecret.com/oauth/authorize"
+BASE_URL="https://platform.fatsecret.com/rest/server.api"
