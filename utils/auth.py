@@ -9,8 +9,23 @@
 import datetime
 
 from rauth.service import OAuth1Service
-from utils.exceptions import BaseFatsecretError, GeneralError, AuthenticationError, ParameterError, ApplicationError
-from utils.constants import NAME, REQUEST_TOKEN_URL, ACCESS_TOKEN_URL, AUTHORIZE_URL, BASE_URL
+
+from utils.constants import (
+    NAME,
+    REQUEST_TOKEN_URL,
+    ACCESS_TOKEN_URL,
+    AUTHORIZE_URL,
+    BASE_URL,
+)
+
+from utils.exceptions import (
+    BaseFatsecretError,
+    GeneralError,
+    AuthenticationError,
+    ParameterError,
+    ApplicationError,
+)
+
 # FIXME add method to set default units and make it an optional argument to the constructor
 class Fatsecret:
     """
