@@ -139,10 +139,57 @@ def exchange_for_access_token(request_token, request_token_secret, verifier):
     signature = hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha1).digest()
     params["oauth_signature"] = base64.b64encode(signature).decode()
 
-    response = requests.get(url, params=params)
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "python-requests/2.31.0"
+    }
+
+    response = requests.get(url, params=params, headers=headers)
     if response.status_code == 200:
         return dict(pair.split('=') for pair in response.text.split('&'))
     raise Exception(f"Access token error: {response.text}")
+
+def test_user_data(access_token, access_token_secret):
+    """Test the access tokens by fetching user profile data"""
+    url = "https://platform.fatsecret.com/rest/server.api"
+    
+    params = {
+        "method": "profile.get",
+        "format": "json",
+        "oauth_consumer_key": CONSUMER_KEY,
+        "oauth_token": access_token,
+        "oauth_signature_method": oauth_signature_method,
+        "oauth_timestamp": str(int(time.time())),
+        "oauth_nonce": hashlib.md5(str(time.time()).encode()).hexdigest(),
+        "oauth_version": oauth_version
+    }
+
+    # Generate signature
+    base_string = "&".join([
+        "GET",
+        urllib.parse.quote(url, safe=""),
+        urllib.parse.quote("&".join(f"{k}={v}" for k,v in sorted(params.items())), safe="")
+    ])
+    
+    signing_key = f"{CONSUMER_SECRET}&{access_token_secret}"
+    signature = hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha1).digest()
+    params["oauth_signature"] = base64.b64encode(signature).decode()
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "python-requests/2.31.0"
+    }
+
+    print("\nTesting access tokens by fetching user profile...")
+    response = requests.get(url, params=params, headers=headers)
+    
+    if response.status_code == 200:
+        print("\nSuccessfully fetched user data:")
+        print(response.json())
+        return response.json()
+    else:
+        print(f"\nFailed to fetch user data: {response.text}")
+        return None
 
 def main():
     """Complete OAuth flow without browser GUI interaction"""
@@ -170,6 +217,9 @@ def main():
         print("\nAccess Token Obtained:")
         print(f"Access Token: {access_data['oauth_token']}")
         print(f"Access Token Secret: {access_data['oauth_token_secret']}")
+        
+        # Step 4: Test the access tokens
+        test_user_data(access_data['oauth_token'], access_data['oauth_token_secret'])
         
         print("\nOAuth flow completed successfully!")
         return access_data
