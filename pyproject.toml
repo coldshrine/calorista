@@ -10,7 +10,8 @@ packages = [{include = "calorista"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-requests-oauthlib = "^2.0.0"
+docker = "^7.1.0"
+flask = "^3.1.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
