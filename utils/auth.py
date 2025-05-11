@@ -192,21 +192,31 @@ def test_user_data(access_token, access_token_secret):
         return None
 
 def main():
-    """Complete OAuth flow without browser GUI interaction"""
+    """Complete OAuth 1.0a 3-legged authentication flow per FatSecret documentation"""
     try:
-        # Step 1: Get request token with local callback URL
+        # Step 1: Obtaining a Request Token (Documentation Section 1)
+        # - Makes signed POST request to request_token endpoint
+        # - Requires consumer_key, signature_method, timestamp, nonce, version, callback
+        # - Returns unauthorized request token and secret
         print("Getting request token...")
         token_data = get_fatsecret_token(callback_url="http://localhost:8080/callback")
         print("\nRequest Token Obtained:")
         print(f"Token: {token_data['oauth_token']}")
         print(f"Token Secret: {token_data['oauth_token_secret']}")
         
-        # Step 2: Get verifier through local callback server
+        # Step 2: Obtaining User Authorization (Documentation Section 2)
+        # - User must authorize the request token via GET to authorize endpoint
+        # - We use local callback server to capture the oauth_verifier
+        # - Alternative is manual verifier entry with callback="oob"
         print("\nStarting local callback server...")
         verifier = get_verifier(token_data['oauth_token'])
         print(f"\nVerifier Received: {verifier}")
         
-        # Step 3: Exchange for access token
+        # Step 3: Obtaining an Access Token (Documentation Section 3)
+        # - Makes signed GET request to access_token endpoint
+        # - Requires consumer_key, request token, verifier, and signature
+        # - Signed with consumer_secret + token_secret
+        # - Returns permanent access token and secret
         print("\nExchanging for access token...")
         access_data = exchange_for_access_token(
             token_data['oauth_token'],
@@ -218,7 +228,10 @@ def main():
         print(f"Access Token: {access_data['oauth_token']}")
         print(f"Access Token Secret: {access_data['oauth_token_secret']}")
         
-        # Step 4: Test the access tokens
+        # Step 4: Verification (Not in documentation)
+        # - Tests the access tokens by making an authenticated API call
+        # - Uses profile.get method to verify tokens work
+        # - Demonstrates how to make subsequent API calls
         test_user_data(access_data['oauth_token'], access_data['oauth_token_secret'])
         
         print("\nOAuth flow completed successfully!")
