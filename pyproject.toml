@@ -9,9 +9,12 @@ readme = "README.md"
 packages = [{include = "calorista"}]
 
 [tool.poetry.dependencies]
-python = "^3.12"
-docker = "^7.1.0"
+python = "^3.13"
 flask = "^3.1.0"
+requests = "^2.32.0"
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^3.3.7"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
