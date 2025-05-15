@@ -3,11 +3,12 @@ import json
 import csv
 from pathlib import Path
 
-from utils.api import FatSecretAPI
-from utils.auth import FatSecretAuth
+from calorista.utils.api import FatSecretAPI
+from calorista.utils.auth import FatSecretAuth
 
-# Initialize authentication and API
-auth = FatSecretAuth(token_file="tokens.json")
+BASE_DIR = Path(__file__).resolve().parent.parent
+token_file = BASE_DIR / "auth_tokens" / "tokens.json"
+auth = FatSecretAuth(token_file=str(token_file))
 api = FatSecretAPI(auth)
 
 # Display user's weight
