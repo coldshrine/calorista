@@ -3,6 +3,9 @@ import hashlib
 import hmac
 import time
 import urllib.parse
+from datetime import datetime
+from calendar import monthrange
+from datetime import timedelta
 
 import requests
 from requests.exceptions import RequestException
@@ -115,14 +118,14 @@ class FatSecretAPI:
                 return self._make_request(method, params, attempt + 1)
             raise Exception(f"Network error: {str(e)}")
 
-    def get_user_profile(self) -> UserProfile:
+    def get_user_weight(self) -> UserProfile:
         """Get the authenticated user's profile data"""
         response = self._make_request("profile.get")
         return UserProfile.from_dict(response["profile"])
 
-    def get_food_entries(self, date: str) -> dict:
+    def get_todays_food_entries(self, date: str) -> dict:
         """
-        Get food entries for a specific date
+        Get food entries for a specific date as days since epoch
 
         Args:
             date: Date in YYYY-MM-DD format
@@ -130,7 +133,14 @@ class FatSecretAPI:
         Returns:
             Dictionary containing food entries data
         """
-        return self._make_request("food_entries.get", {"date": date})
+        from datetime import datetime, date as date_cls
+
+        # convert date string to int days since epoch
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+        epoch = date_cls(1970, 1, 1)
+        days_since_epoch = (date_obj - epoch).days
+
+        return self._make_request("food_entries.get.v2", {"date": days_since_epoch})
 
     def get_exercises(self, date: str | None = None) -> dict:
         """
@@ -161,14 +171,60 @@ class FatSecretAPI:
             {"search_expression": query, "max_results": str(max_results)},
         )
 
-    def get_food(self, food_id: str) -> dict:
+    # def get_food(self, food_id: str) -> dict:
+    #     """
+    #     Get detailed information about a specific food
+
+    #     Args:
+    #         food_id: FatSecret food ID
+
+    #     Returns:
+    #         Dictionary containing food details
+    #     """
+    #     return self._make_request("food.get", {"food_id": food_id})
+
+    def get_monthly_food_entries(self, date: str) -> dict:
         """
-        Get detailed information about a specific food
+        Get all food entries for a given month.
 
         Args:
-            food_id: FatSecret food ID
+            date: Any date in the month in YYYY-MM-DD format
 
         Returns:
-            Dictionary containing food details
+            Dictionary containing food entries for the month
         """
-        return self._make_request("food.get", {"food_id": food_id})
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+        epoch = datetime(1970, 1, 1).date()
+        days_since_epoch = (date_obj - epoch).days
+        return self._make_request("food_entries.get_month", {"date": days_since_epoch})
+
+    def get_historical_food_entries(self, start_date: str, end_date: str) -> list[dict]:
+        """
+        Get food entries for each day in the specified date range.
+
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+
+        Returns:
+            List of food entries dictionaries for each day.
+        """
+        from datetime import datetime, timedelta
+
+        start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        delta = timedelta(days=1)
+
+        all_entries = []
+
+        current = start
+        while current <= end:
+            days_since_epoch = (current - datetime(1970, 1, 1).date()).days
+            try:
+                data = self._make_request("food_entries.get.v2", {"date": days_since_epoch})
+                all_entries.append(data)
+            except Exception as e:
+                print(f"[{current}] Failed to fetch entries: {e}")
+            current += delta
+
+        return all_entries
