@@ -32,6 +32,8 @@ class TokenManager:
         return {}
 
     def save_tokens(self, tokens: dict):
+        self.token_file.parent.mkdir(parents=True, exist_ok=True)
+
         with open(self.token_file, "w") as f:
             json.dump(tokens, f)
         self.tokens = tokens
@@ -161,26 +163,21 @@ class FatSecretAuth:
     def authenticate(self) -> dict:
         """Complete OAuth 1.0a 3-legged authentication flow"""
         try:
-            # Check for existing tokens first
             existing_tokens = self.token_manager.get_tokens()
             if existing_tokens:
                 print("Using existing access tokens")
                 return existing_tokens
 
-            # Step 1: Get request token
             token_data = self.get_request_token(
                 callback_url="http://localhost:8080/callback"
             )
 
-            # Step 2: Get user authorization
             verifier = self.get_verifier(token_data["oauth_token"])
 
-            # Step 3: Exchange for access token
             access_data = self.get_access_token(
                 token_data["oauth_token"], token_data["oauth_token_secret"], verifier
             )
 
-            # Save tokens for future use
             self.token_manager.save_tokens(access_data)
 
             return access_data

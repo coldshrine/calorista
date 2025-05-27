@@ -3,8 +3,8 @@ import json
 import csv
 from pathlib import Path
 
-from calorista.utils.api import FatSecretAPI
-from calorista.utils.auth import FatSecretAuth
+from utils.api import FatSecretAPI
+from utils.auth import FatSecretAuth
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 token_file = BASE_DIR / "auth_tokens" / "tokens.json"
@@ -23,7 +23,7 @@ print(json.dumps(todays_food_entries, indent=4, ensure_ascii=False))
 
 # Define historical range
 start_date = "2025-04-07"
-end_date = "2025-05-15"
+end_date = "2025-05-27"
 
 # Get full historical food entries
 historical_entries = api.get_historical_food_entries(start_date, end_date)
@@ -37,10 +37,8 @@ for daily_result in historical_entries:
         entries = [entries]
     all_entries.extend(entries)
 
-# Print the result count
 print(f"\n✅ Retrieved {len(all_entries)} historical food entries.\n")
 
-# Save to JSON
 output_dir = Path("historical_food_data")
 output_dir.mkdir(exist_ok=True)
 
@@ -50,7 +48,6 @@ with open(json_path, "w", encoding="utf-8") as f:
 
 print(f"📦 JSON saved to {json_path}")
 
-# Save to CSV
 csv_path = output_dir / f"historical_food_entries_{start_date}_to_{end_date}.csv"
 with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
     fieldnames = [

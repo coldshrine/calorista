@@ -21,7 +21,9 @@ class TokenManager:
         except (OSError, json.JSONDecodeError):
             return {}
 
-    def save_tokens(self, tokens: dict[str, Any]) -> None:
+    def save_tokens(self, tokens: dict):
+        self.token_file.parent.mkdir(parents=True, exist_ok=True)
+
         with open(self.token_file, "w") as f:
             json.dump(tokens, f)
         self.tokens = tokens

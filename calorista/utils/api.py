@@ -4,8 +4,6 @@ import hmac
 import time
 import urllib.parse
 from datetime import datetime
-from calendar import monthrange
-from datetime import timedelta
 
 import requests
 from requests.exceptions import RequestException
