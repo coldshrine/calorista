@@ -23,7 +23,7 @@ print(json.dumps(todays_food_entries, indent=4, ensure_ascii=False))
 
 # Define historical range
 start_date = "2025-04-07"
-end_date = "2025-05-27"
+end_date = "2025-05-29"
 
 # Get full historical food entries
 historical_entries = api.get_historical_food_entries(start_date, end_date)
