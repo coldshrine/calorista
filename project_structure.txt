@@ -1,0 +1,23 @@
+.
+├── auth_tokens
+│   └── tokens.json
+├── calorista
+│   ├── __init__.py
+│   ├── main.py
+│   └── utils
+│       ├── __init__.py
+│       ├── api.py
+│       ├── auth.py
+│       ├── constants.py
+│       ├── models.py
+│       └── token_manager.py
+├── historical_food_data
+│   └── historical_food_entries_2025-04-07_to_2025-06-15.json
+├── icon.jpg
+├── LICENSE
+├── poetry.lock
+├── project_structure.txt
+├── pyproject.toml
+└── README.md
+
+5 directories, 16 files

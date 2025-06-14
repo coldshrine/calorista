@@ -4,12 +4,14 @@ import hmac
 import time
 import urllib.parse
 from datetime import datetime
+import json
 
 import requests
 from requests.exceptions import RequestException
+import redis
 
 from .auth import FatSecretAuth
-from .constants import CONSUMER_KEY, CONSUMER_SECRET
+from .constants import CONSUMER_KEY, CONSUMER_SECRET, REDIS_URL
 from .models import UserProfile
 
 
@@ -226,3 +228,17 @@ class FatSecretAPI:
             current += delta
 
         return all_entries
+
+
+redis_client = redis.Redis.from_url(REDIS_URL)
+
+def cache_food_entries_to_redis(entries: list[dict], date_str: str) -> None:
+    key = f"food_entries:{date_str}"
+    redis_client.set(key, json.dumps(entries))
+
+def get_cached_food_entries(date_str: str) -> list[dict] | None:
+    key = f"food_entries:{date_str}"
+    cached = redis_client.get(key)
+    if cached:
+        return json.loads(cached)
+    return None

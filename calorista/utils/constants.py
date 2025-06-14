@@ -1,5 +1,11 @@
-CONSUMER_KEY = ""
-CONSUMER_SECRET = ""
+import os
+
+CONSUMER_KEY = "933d0ee0da8a4aa2a2810c0fa6139258"
+CONSUMER_SECRET = "53f8b873787748e696f32251023cf023"
 CALLBACK_URL = "https://oauth.pstmn.io/v1/callback"
 OAUTH_SIGNATURE_METHOD = "HMAC-SHA1"
 OAUTH_VERSION = "1.0"
+
+#REDIS
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379") 
