@@ -27,7 +27,7 @@ print(f"\nHistorical Food Entries from {start_date} to {end_date}:")
 all_entries = []
 for daily_result in historical_entries:
     entries = daily_result.get("food_entries", {}).get("food_entry", [])
-    if isinstance(entries, dict):  # if only one entry
+    if isinstance(entries, dict): 
         entries = [entries]
     all_entries.extend(entries)
 

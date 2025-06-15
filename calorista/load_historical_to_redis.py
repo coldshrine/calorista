@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from utils.api import cache_food_entries_to_redis
 
-json_file_path = Path(__file__).resolve().parent.parent / "historical_food_data" / "historical_food_entries_2025-04-07_to_2025-06-15.json"
+json_file_path = Path(__file__).resolve().parent.parent / "historical_food_data" / "historical_food_entries_2025-04-07_to_2025-06-16.json"
 
 if not json_file_path.exists():
     raise FileNotFoundError(f"❌ File not found: {json_file_path}")
