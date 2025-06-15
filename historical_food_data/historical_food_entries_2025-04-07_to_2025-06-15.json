@@ -10406,6 +10406,22 @@
     "sugar": "2.16"
   },
   {
+    "calories": "31",
+    "carbohydrate": "6.31",
+    "date_int": "20254",
+    "fat": "0.16",
+    "food_entry_description": "0.1 :custom:0,1 x 100г, 10 g Pikkolo Хлібці Пшенично-Гречані",
+    "food_entry_id": "20274895489",
+    "food_entry_name": "Pikkolo Хлібці Пшенично-Гречані",
+    "food_id": "57915565",
+    "meal": "Other",
+    "number_of_units": "0.100",
+    "protein": "1.09",
+    "saturated_fat": "0.040",
+    "serving_id": "48317614",
+    "sugar": "0.13"
+  },
+  {
     "calories": "74",
     "carbohydrate": "14.94",
     "date_int": "20254",
