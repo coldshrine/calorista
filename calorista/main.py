@@ -19,14 +19,21 @@ print("\nToday's Food Entries:")
 print(json.dumps(todays_food_entries, indent=4, ensure_ascii=False))
 
 start_date = "2025-04-07"
-end_date = today_str  # dynamically set to today's date
+end_date = "2025-06-15"  # dynamically set to today's date
 
 historical_entries = api.get_historical_food_entries(start_date, end_date)
 print(f"\nHistorical Food Entries from {start_date} to {end_date}:")
 
 all_entries = []
 for daily_result in historical_entries:
-    entries = daily_result.get("food_entries", {}).get("food_entry", [])
+    date = daily_result.get("date", "unknown date")
+    food_entries = daily_result.get("food_entries")
+    
+    if not food_entries:
+        print(f"⚠️  No food entries on {date}")
+        continue
+
+    entries = food_entries.get("food_entry", [])
     if isinstance(entries, dict): 
         entries = [entries]
     all_entries.extend(entries)
