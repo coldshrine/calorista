@@ -8,8 +8,18 @@ import redis
 from redis.exceptions import ConnectionError
 from urllib.parse import urlparse
 import ssl
+from datetime import datetime, timedelta
 
 from utils.constants import REDIS_URL
+
+def convert_days_to_date(days_str: str) -> str:
+    """Convert days since epoch (1970-01-01) to YYYY-MM-DD format"""
+    try:
+        days = int(days_str)
+        date = datetime(1970, 1, 1) + timedelta(days=days)
+        return date.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return "unknown_date"
 
 def find_latest_historical_file(directory: Path) -> Optional[Path]:
     """Find the most recent historical food entries file."""
@@ -43,7 +53,8 @@ def create_redis_connection():
         'socket_timeout': 10,
         'socket_connect_timeout': 5,
         'ssl': True,
-        'ssl_cert_reqs': ssl.CERT_NONE
+        'ssl_cert_reqs': ssl.CERT_NONE,
+        'decode_responses': True  # For easier string handling
     }
     
     return redis.Redis(**connection_params)
@@ -66,19 +77,33 @@ def main():
         with open(json_file_path, "r", encoding="utf-8") as f:
             entries = json.load(f)
 
-        # Process and cache entries
-        grouped_by_date = defaultdict(list)
-        for entry in entries:
-            if date := entry.get("date_int"):
-                grouped_by_date[date].append(entry)
-
-        print(f"📊 Found {len(grouped_by_date)} dates with {len(entries)} entries")
+        # Process and cache entries with human-readable dates
+        grouped_by_human_date = defaultdict(list)
+        date_mapping = {}  # Track original date_int to human date
         
-        for date, items in grouped_by_date.items():
-            redis_client.set(f"food_entries:{date}", json.dumps(items))
-            print(f"✅ Cached {len(items)} entries for {date}")
+        for entry in entries:
+            if date_int := entry.get("date_int"):
+                human_date = convert_days_to_date(date_int)
+                date_mapping[date_int] = human_date
+                grouped_by_human_date[human_date].append(entry)
+                # Add human date to the entry
+                entry['human_date'] = human_date
 
-        print("🎉 All data cached successfully")
+        print(f"📊 Found {len(grouped_by_human_date)} dates with {len(entries)} entries")
+        
+        # Cache both original and human-readable formats
+        for human_date, items in grouped_by_human_date.items():
+            # Store with human date as key
+            redis_key = f"food_entries:{human_date}"
+            redis_client.set(redis_key, json.dumps(items))
+            
+            # Also store the mapping for reference
+            original_date_int = items[0]['date_int']
+            redis_client.hset("date_mappings", human_date, original_date_int)
+            
+            print(f"✅ Cached {len(items)} entries for {human_date} (original date_int: {original_date_int})")
+
+        print("🎉 All data cached successfully with human-readable dates")
 
     except ConnectionError:
         print("\n❌ Failed to connect to Upstash Redis. Please check:")
