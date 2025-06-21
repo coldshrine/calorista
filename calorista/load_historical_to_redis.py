@@ -3,7 +3,7 @@ import re
 import sys
 from pathlib import Path
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, Set
 import redis
 from redis.exceptions import ConnectionError
 from urllib.parse import urlparse
@@ -12,106 +12,90 @@ from datetime import datetime, timedelta
 
 from utils.constants import REDIS_URL
 
+# Constants
+REDIS_FOOD_ENTRIES_PREFIX = "food_entries:"
+REDIS_DATE_MAPPINGS_KEY = "date_mappings"
+
 def convert_days_to_date(days_str: str) -> str:
-    """Convert days since epoch (1970-01-01) to YYYY-MM-DD format"""
+    """Convert days since epoch to YYYY-MM-DD format"""
     try:
         days = int(days_str)
         date = datetime(1970, 1, 1) + timedelta(days=days)
         return date.strftime("%Y-%m-%d")
     except (ValueError, TypeError):
-        return "unknown_date"
+        return None
 
-def find_latest_historical_file(directory: Path) -> Optional[Path]:
-    """Find the most recent historical food entries file."""
-    historical_files = list(directory.glob("historical_food_entries_*_to_*.json"))
-    if not historical_files:
-        print(f"ℹ️ No historical files found in {directory}")
-        return None
-    
-    dated_files = []
-    date_pattern = re.compile(r".*_to_(\d{4}-\d{2}-\d{2})\.json")
-    
-    for file in historical_files:
-        if match := date_pattern.search(file.name):
-            dated_files.append((match.group(1), file))
-    
-    if not dated_files:
-        print("ℹ️ No valid historical files found")
-        return None
-    
-    dated_files.sort(key=lambda x: x[0], reverse=True)
-    return dated_files[0][1]
+def get_existing_dates(redis_client: redis.Redis) -> Set[str]:
+    """Get set of dates already in Redis"""
+    existing_keys = redis_client.keys(f"{REDIS_FOOD_ENTRIES_PREFIX}*")
+    return {key.decode().replace(REDIS_FOOD_ENTRIES_PREFIX, "") 
+            for key in existing_keys} if existing_keys else set()
 
 def create_redis_connection():
-    """Create a Redis connection with SSL for Upstash."""
+    """Create Redis connection compatible with older versions"""
     parsed = urlparse(REDIS_URL)
+    return redis.StrictRedis(
+        host=parsed.hostname,
+        port=parsed.port,
+        password=parsed.password,
+        ssl=True,
+        ssl_cert_reqs=None,
+        decode_responses=False
+    )
+
+def process_file(file_path: Path, redis_client: redis.Redis) -> None:
+    """Process JSON file and load only missing dates"""
+    existing_dates = get_existing_dates(redis_client)
+    loaded_dates = set()
+    skipped_dates = set()
     
-    connection_params = {
-        'host': parsed.hostname,
-        'port': parsed.port,
-        'password': parsed.password,
-        'socket_timeout': 10,
-        'socket_connect_timeout': 5,
-        'ssl': True,
-        'ssl_cert_reqs': ssl.CERT_NONE,
-        'decode_responses': True  # For easier string handling
-    }
+    with open(file_path, 'r', encoding='utf-8') as f:
+        entries = json.load(f)
     
-    return redis.Redis(**connection_params)
+    # Group entries by date
+    date_groups = defaultdict(list)
+    for entry in entries:
+        if date_int := entry.get("date_int"):
+            human_date = convert_days_to_date(date_int)
+            if human_date and human_date not in existing_dates:
+                date_groups[human_date].append(entry)
+    
+    # Load missing dates
+    for date, items in date_groups.items():
+        redis_key = f"{REDIS_FOOD_ENTRIES_PREFIX}{date}"
+        redis_client.set(redis_key, json.dumps(items))
+        redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date, items[0]['date_int'])
+        loaded_dates.add(date)
+        print(f"✅ Loaded {len(items)} entries for {date}")
+    
+    print(f"\n📊 Summary for {file_path.name}:")
+    print(f"Loaded {len(loaded_dates)} new dates")
+    print(f"Skipped {len(existing_dates)} existing dates")
 
 def main():
     try:
-        # Initialize Redis connection
-        print("🔌 Connecting to Upstash Redis...")
+        # Initialize Redis
+        print("🔌 Connecting to Redis...")
         redis_client = create_redis_connection()
-        redis_client.ping()  # Test connection
-        print("✅ Connected to Redis successfully")
+        redis_client.ping()
+        print("✅ Connected successfully")
         
-        # Find and process historical file
+        # Process all historical files in order
         historical_dir = Path(__file__).resolve().parent.parent / "historical_food_data"
-        if not (json_file_path := find_latest_historical_file(historical_dir)):
-            sys.exit(1)
-
-        print(f"📂 Processing: {json_file_path.name}")
+        files = sorted(historical_dir.glob("historical_food_entries_*_to_*.json"))
         
-        with open(json_file_path, "r", encoding="utf-8") as f:
-            entries = json.load(f)
-
-        # Process and cache entries with human-readable dates
-        grouped_by_human_date = defaultdict(list)
-        date_mapping = {}  # Track original date_int to human date
-        
-        for entry in entries:
-            if date_int := entry.get("date_int"):
-                human_date = convert_days_to_date(date_int)
-                date_mapping[date_int] = human_date
-                grouped_by_human_date[human_date].append(entry)
-                # Add human date to the entry
-                entry['human_date'] = human_date
-
-        print(f"📊 Found {len(grouped_by_human_date)} dates with {len(entries)} entries")
-        
-        # Cache both original and human-readable formats
-        for human_date, items in grouped_by_human_date.items():
-            # Store with human date as key
-            redis_key = f"food_entries:{human_date}"
-            redis_client.set(redis_key, json.dumps(items))
+        if not files:
+            print("❌ No historical files found")
+            return
             
-            # Also store the mapping for reference
-            original_date_int = items[0]['date_int']
-            redis_client.hset("date_mappings", human_date, original_date_int)
+        for file_path in files:
+            print(f"\n🔍 Processing {file_path.name}...")
+            process_file(file_path, redis_client)
             
-            print(f"✅ Cached {len(items)} entries for {human_date} (original date_int: {original_date_int})")
-
-        print("🎉 All data cached successfully with human-readable dates")
-
-    except ConnectionError:
-        print("\n❌ Failed to connect to Upstash Redis. Please check:")
-        print("1. Your REDIS_URL in .env")
-        print("2. Your internet connection")
-        print("3. That SSL/TLS is enabled in your Upstash settings")
+    except ConnectionError as e:
+        print(f"❌ Redis connection failed: {e}")
     except Exception as e:
-        print(f"\n❌ Error: {str(e)}")
+        print(f"❌ Error: {e}")
     finally:
         if 'redis_client' in locals():
             redis_client.close()
