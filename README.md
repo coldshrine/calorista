@@ -1,5 +1,9 @@
 # calorista
 
+Demo:
+
+https://calorista.streamlit.app/
+
 ![Calorista Icon](./icon.jpg)
 
 ETL pipeline for authenticated FatSecret users that extracts real-time food log data, transforms raw entries with detailed nutritional metadata.
