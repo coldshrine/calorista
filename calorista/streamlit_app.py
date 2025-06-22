@@ -117,18 +117,22 @@ def load_and_process_data(_r_client): # Changed r_client to _r_client
 food_df = load_and_process_data(redis_client)
 
 # --- Streamlit UI ---
-st.title("🍽️ Calorista Food Logging Infographics") # This was moved after set_page_config
+st.title("🍽️ Calorista Food Logging Infographics")
 
 # Only proceed with UI rendering if food_df is not empty
 if not food_df.empty:
+    # Get min and max dates from the loaded data
+    min_available_date = min(food_df['date'])
+    max_available_date = max(food_df['date'])
+
+    st.write(f"Data available from **{min_available_date.strftime('%Y-%m-%d')}** to **{max_available_date.strftime('%Y-%m-%d')}**")
+
+    # --- Latest Day Infographics ---
     # Sort dates to find the latest
     sorted_dates = sorted(food_df['date'].unique(), reverse=True)
-    latest_date = sorted_dates[0] if sorted_dates else None # latest_date will be None if sorted_dates is empty
+    latest_date = sorted_dates[0] if sorted_dates else None
 
     if latest_date: # Only display if a latest_date exists
-        st.write(f"Data available from **{min(food_df['date']).strftime('%Y-%m-%d')}** to **{max(food_df['date']).strftime('%Y-%m-%d')}**")
-
-        # --- Latest Day Infographics ---
         st.header(f"📊 Latest Day Overview: {latest_date.strftime('%Y-%m-%d')}")
 
         latest_day_df = food_df[food_df['date'] == latest_date]
@@ -160,22 +164,45 @@ if not food_df.empty:
 
         else:
             st.info(f"No entries for the latest day: {latest_date.strftime('%Y-%m-%d')}.")
+    else:
+        st.warning("No date entries found in your Redis database that match the 'food_entries:YYYY-MM-DD' key pattern for the latest day.")
 
-        # --- Weekly Overview Infographics ---
-        st.header("🗓️ Weekly Overview")
 
-        # User selection for number of weeks
-        num_weeks = st.slider("Select number of weeks to display:", min_value=1, max_value=8, value=1)
-        end_date = latest_date
-        start_date = end_date - timedelta(weeks=num_weeks) + timedelta(days=1) # Start from the beginning of the selected week range
+    # --- Flexible Date Range Overview ---
+    st.header("🗓️ Custom Date Range Overview")
 
-        st.write(f"Displaying data from **{start_date.strftime('%Y-%m-%d')}** to **{end_date.strftime('%Y-%m-%d')}**")
+    # Calculate default start date for the date picker (e.g., last 7 days from max_available_date)
+    default_start_date_picker = max(min_available_date, max_available_date - timedelta(days=6))
 
-        weekly_df = food_df[(food_df['date'] >= start_date) & (food_df['date'] <= end_date)].copy() # Use .copy() to avoid SettingWithCopyWarning
+    col_start, col_end = st.columns(2)
+    with col_start:
+        selected_start_date = st.date_input(
+            "Select Start Date:",
+            value=default_start_date_picker,
+            min_value=min_available_date,
+            max_value=max_available_date,
+            key="start_date_picker"
+        )
+    with col_end:
+        selected_end_date = st.date_input(
+            "Select End Date:",
+            value=max_available_date,
+            min_value=min_available_date,
+            max_value=max_available_date,
+            key="end_date_picker"
+        )
 
-        if not weekly_df.empty:
+    # Ensure start date is not after end date
+    if selected_start_date > selected_end_date:
+        st.error("Error: Start date cannot be after end date. Please adjust your selection.")
+    else:
+        st.write(f"Displaying data from **{selected_start_date.strftime('%Y-%m-%d')}** to **{selected_end_date.strftime('%Y-%m-%d')}**")
+
+        filtered_df = food_df[(food_df['date'] >= selected_start_date) & (food_df['date'] <= selected_end_date)].copy()
+
+        if not filtered_df.empty:
             # Group by date for daily totals within the selected period
-            daily_totals_weekly = weekly_df.groupby('date').agg(
+            daily_totals_filtered = filtered_df.groupby('date').agg(
                 total_calories=('calories', 'sum'),
                 total_carbohydrate=('carbohydrate', 'sum'),
                 total_fat=('fat', 'sum'),
@@ -183,22 +210,22 @@ if not food_df.empty:
             ).reset_index()
 
             # Ensure all dates in the range are present, fill missing with 0
-            date_range = pd.date_range(start=start_date, end=end_date, freq='D').date
-            daily_totals_weekly = daily_totals_weekly.set_index('date').reindex(date_range, fill_value=0).reset_index()
-            daily_totals_weekly.rename(columns={'index': 'date'}, inplace=True)
+            date_range = pd.date_range(start=selected_start_date, end=selected_end_date, freq='D').date
+            daily_totals_filtered = daily_totals_filtered.set_index('date').reindex(date_range, fill_value=0).reset_index()
+            daily_totals_filtered.rename(columns={'index': 'date'}, inplace=True)
 
 
-            st.subheader(f"Daily Calorie Intake ({num_weeks} Week{'s' if num_weeks > 1 else ''} Trend)")
-            st.line_chart(daily_totals_weekly.set_index('date')['total_calories'])
+            st.subheader(f"Daily Calorie Intake Trend")
+            st.line_chart(daily_totals_filtered.set_index('date')['total_calories'])
 
-            st.subheader(f"Daily Macronutrient Intake ({num_weeks} Week{'s' if num_weeks > 1 else ''} Trend)")
-            st.line_chart(daily_totals_weekly.set_index('date')[['total_carbohydrate', 'total_fat', 'total_protein']])
+            st.subheader(f"Daily Macronutrient Intake Trend")
+            st.line_chart(daily_totals_filtered.set_index('date')[['total_carbohydrate', 'total_fat', 'total_protein']])
 
-            st.subheader(f"Aggregated Macros for the Selected Period ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})")
-            total_period_calories = daily_totals_weekly['total_calories'].sum()
-            total_period_carbs = daily_totals_weekly['total_carbohydrate'].sum()
-            total_period_fat = daily_totals_weekly['total_fat'].sum()
-            total_period_protein = weekly_df['protein'].sum() # Corrected to sum from the weekly_df
+            st.subheader(f"Aggregated Macros for the Selected Period")
+            total_period_calories = daily_totals_filtered['total_calories'].sum()
+            total_period_carbs = daily_totals_filtered['total_carbohydrate'].sum()
+            total_period_fat = daily_totals_filtered['total_fat'].sum()
+            total_period_protein = filtered_df['protein'].sum()
 
             col5, col6, col7, col8 = st.columns(4)
             with col5:
@@ -211,9 +238,59 @@ if not food_df.empty:
                 st.metric("Total Period Protein", f"{total_period_protein:.1f} g")
 
         else:
-            st.info(f"No entries found for the selected weekly period from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}.")
+            st.info(f"No entries found for the selected date range from {selected_start_date.strftime('%Y-%m-%d')} to {selected_end_date.strftime('%Y-%m-%d')}.")
+
+
+    # --- Weekly Aggregated Trends ---
+    st.header("📈 Weekly Aggregated Trends (All Historical Data)")
+    if not food_df.empty:
+        # Create a 'week_start' column
+        # Using week of year (W) for grouping, ensuring it's tied to the year
+        # Get Monday of the week for consistent grouping
+        food_df['week_start'] = food_df['date'].apply(lambda x: x - timedelta(days=x.weekday()))
+        
+        weekly_totals = food_df.groupby('week_start').agg(
+            total_calories=('calories', 'sum'),
+            total_carbohydrate=('carbohydrate', 'sum'),
+            total_fat=('fat', 'sum'),
+            total_protein=('protein', 'sum')
+        ).reset_index().sort_values('week_start')
+
+        if not weekly_totals.empty:
+            st.subheader("Weekly Calorie Intake Trend")
+            st.line_chart(weekly_totals.set_index('week_start')['total_calories'])
+
+            st.subheader("Weekly Macronutrient Intake Trend")
+            st.line_chart(weekly_totals.set_index('week_start')[['total_carbohydrate', 'total_fat', 'total_protein']])
+        else:
+            st.info("No weekly data to display.")
     else:
-        st.warning("No date entries found in your Redis database that match the 'food_entries:YYYY-MM-DD' key pattern.")
+        st.info("No data available to calculate weekly trends.")
+
+
+    # --- Monthly Aggregated Trends ---
+    st.header("🗓️ Monthly Aggregated Trends (All Historical Data)")
+    if not food_df.empty:
+        # Create a 'month_start' column
+        food_df['month_start'] = food_df['date'].apply(lambda x: x.replace(day=1))
+
+        monthly_totals = food_df.groupby('month_start').agg(
+            total_calories=('calories', 'sum'),
+            total_carbohydrate=('carbohydrate', 'sum'),
+            total_fat=('fat', 'sum'),
+            total_protein=('protein', 'sum')
+        ).reset_index().sort_values('month_start')
+
+        if not monthly_totals.empty:
+            st.subheader("Monthly Calorie Intake Trend")
+            st.line_chart(monthly_totals.set_index('month_start')['total_calories'])
+
+            st.subheader("Monthly Macronutrient Intake Trend")
+            st.line_chart(monthly_totals.set_index('month_start')[['total_carbohydrate', 'total_fat', 'total_protein']])
+        else:
+            st.info("No monthly data to display.")
+    else:
+        st.info("No data available to calculate monthly trends.")
 
 else:
     st.info("No data to display. Please ensure Redis has 'food_entries:YYYY-MM-DD' keys with valid JSON data, and your connection details in the .env file are correct.")
