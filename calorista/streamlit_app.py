@@ -55,36 +55,46 @@ def get_redis_connection():
 redis_client = get_redis_connection()
 
 # --- Data Retrieval and Processing ---
-@st.cache_data(ttl=3600) # Cache data for 1 hour
-def load_and_process_data(_r_client): # Changed r_client to _r_client
+# --- Data Retrieval and Processing ---
+@st.cache_data(ttl=3600)
+def load_and_process_data(_r_client):
     """
-    Loads food entry data from Redis, processes it, and returns a DataFrame.
+    Enhanced version that prevents duplicates while keeping all functionality
     """
-    if not _r_client: # Changed r_client to _r_client
+    if not _r_client:
         return pd.DataFrame()
 
     all_food_entries = []
+    seen_entries = set()  # Track unique entries to prevent duplicates
+    
     try:
-        # Scan for keys matching the pattern "food_entries:YYYY-MM-DD"
-        # Ensure we are iterating over bytes for scan_iter and decoding
-        for key_bytes in _r_client.scan_iter("food_entries:*"): # Changed r_client to _r_client
-            key = key_bytes # scan_iter with decode_responses=True already returns strings
-            date_str = key.split(':')[-1]
+        for key in _r_client.scan_iter("food_entries:*"):
+            date_str = key.split(':')[-1] if isinstance(key, str) else key.decode().split(':')[-1]
+            
             try:
-                # Convert key string to datetime object
                 entry_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError:
                 st.warning(f"Skipping malformed date key: {key}")
                 continue
 
-            json_data = _r_client.get(key) # Changed r_client to _r_client
+            json_data = _r_client.get(key)
             if json_data:
                 try:
                     entries_for_day = json.loads(json_data)
                     for entry in entries_for_day:
-                        # Add the date to each entry for later filtering
-                        entry['date'] = entry_date
-                        all_food_entries.append(entry)
+                        # Create a unique identifier for each entry
+                        entry_id = (
+                            f"{date_str}-"
+                            f"{entry.get('id', '')}-"
+                            f"{entry.get('food_entry_name', '')}-"
+                            f"{entry.get('timestamp', '')}-"
+                            f"{entry.get('meal', '')}"
+                        )
+                        
+                        if entry_id not in seen_entries:
+                            entry['date'] = entry_date
+                            all_food_entries.append(entry)
+                            seen_entries.add(entry_id)
                 except json.JSONDecodeError:
                     st.warning(f"Skipping malformed JSON for key: {key}")
             else:
@@ -95,22 +105,19 @@ def load_and_process_data(_r_client): # Changed r_client to _r_client
         return pd.DataFrame()
 
     if not all_food_entries:
-        # If no entries are found, return an empty DataFrame.
-        # The UI will then gracefully handle the empty DataFrame.
         return pd.DataFrame()
 
-    # Convert to DataFrame for easier manipulation
+    # Convert to DataFrame (keeping all your existing processing)
     df = pd.DataFrame(all_food_entries)
 
-    # Convert numeric columns to float, coercing errors to NaN
+    # Your existing numeric conversions
     numeric_cols = ["calories", "carbohydrate", "fat", "protein", "sodium", "sugar", "number_of_units"]
     for col in numeric_cols:
         if col in df.columns:
-            # Replace empty strings or non-numeric values with NaN, then convert to numeric
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0) # Fill NaN with 0 after conversion
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
 
-    # Ensure date column is datetime object
-    df['date'] = pd.to_datetime(df['date']).dt.date # Keep only the date part
+    # Your existing date handling
+    df['date'] = pd.to_datetime(df['date']).dt.date
 
     return df
 
