@@ -54,7 +54,7 @@ def get_existing_entry_ids(redis_client: redis.Redis, date: str) -> set:
     return {entry['id'] for entry in entries if 'id' in entry}
 
 def process_latest_file(redis_client: redis.Redis):
-    """Process only the latest JSON file and load missing entries"""
+    """Properly handles incremental loading of new entries"""
     historical_dir = Path(__file__).parent.parent / "historical_food_data"
     file_path = get_latest_file(historical_dir)
     print(f"🔍 Processing latest file: {file_path.name}")
@@ -67,7 +67,7 @@ def process_latest_file(redis_client: redis.Redis):
     skipped_count = 0
 
     for entry in entries:
-        if 'id' not in entry or 'date_int' not in entry:
+        if 'date_int' not in entry:
             skipped_count += 1
             continue
 
@@ -76,32 +76,48 @@ def process_latest_file(redis_client: redis.Redis):
             skipped_count += 1
             continue
 
-        existing_ids = get_existing_entry_ids(redis_client, human_date)
-        if entry['id'] not in existing_ids:
-            date_groups[human_date].append(entry)
-            loaded_count += 1
-        else:
-            skipped_count += 1
+        # Always add to processing - we'll handle duplicates during merge
+        date_groups[human_date].append(entry)
+        loaded_count += 1
 
-    # Load new entries to Redis
+    # Improved merge logic
     for date, new_entries in date_groups.items():
         redis_key = f"{REDIS_FOOD_ENTRIES_PREFIX}{date}"
         
-        # Get existing entries and merge with new ones
         existing_entries = []
         if redis_client.exists(redis_key):
             existing_entries = json.loads(redis_client.get(redis_key))
         
-        merged_entries = existing_entries + new_entries
-        redis_client.set(redis_key, json.dumps(merged_entries))
-        redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date, str(new_entries[0]['date_int']))
+        # Create a set of existing entry hashes for comparison
+        existing_hashes = {hash_entry(e) for e in existing_entries}
         
-        print(f"✅ Added {len(new_entries)} new entries for {date}")
+        # Only add truly new entries
+        merged_entries = existing_entries + [
+            e for e in new_entries 
+            if hash_entry(e) not in existing_hashes
+        ]
+        
+        if len(merged_entries) > len(existing_entries):
+            redis_client.set(redis_key, json.dumps(merged_entries))
+            redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date, str(new_entries[0]['date_int']))
+            print(f"✅ Added {len(merged_entries) - len(existing_entries)} new entries for {date}")
+        else:
+            print(f"⏩ No new entries for {date} (already exists)")
 
-    print(f"\n📊 Summary:")
-    print(f"Total entries in file: {len(entries)}")
-    print(f"New entries loaded: {loaded_count}")
-    print(f"Entries skipped (already in Redis): {skipped_count}")
+    print(f"\n📊 Final Summary:")
+    print(f"Total entries processed: {len(entries)}")
+    print(f"Entries available for loading: {loaded_count}")
+    print(f"Entries skipped (invalid): {skipped_count}")
+
+def hash_entry(entry: dict) -> str:
+    """Create a unique hash for an entry using multiple fields"""
+    return hash(frozenset({
+        'food': entry.get('food_entry_name', ''),
+        'meal': entry.get('meal', ''),
+        'time': entry.get('timestamp', ''),
+        'date_int': entry.get('date_int', ''),
+        'calories': entry.get('calories', 0)
+    }.items()))
 
 def main():
     try:
