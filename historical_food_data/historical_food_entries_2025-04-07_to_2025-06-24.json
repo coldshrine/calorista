@@ -11908,6 +11908,22 @@
     "sugar": "15.75"
   },
   {
+    "calories": "45",
+    "carbohydrate": "10.50",
+    "date_int": "20263",
+    "fat": "0",
+    "fiber": "1.1",
+    "food_entry_description": "3/4 :custom:3/4 x 100г, 75 g АТБ Инжирный Персик",
+    "food_entry_id": "20359427021",
+    "food_entry_name": "АТБ Инжирный Персик",
+    "food_id": "39599930",
+    "meal": "Other",
+    "number_of_units": "0.750",
+    "protein": "0.75",
+    "serving_id": "34734003",
+    "sugar": "6.45"
+  },
+  {
     "calories": "46",
     "carbohydrate": "11.60",
     "date_int": "20263",
