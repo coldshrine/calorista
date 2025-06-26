@@ -249,32 +249,42 @@ if not food_df.empty:
 
 
     # --- Weekly Aggregated Trends ---
+# --- Weekly Aggregated Trends ---
     st.header("📈 Weekly Aggregated Trends (All Historical Data)")
     if not food_df.empty:
-        # Create a 'week_start' column
-        # Using week of year (W) for grouping, ensuring it's tied to the year
-        # Get Monday of the week for consistent grouping
-        food_df['week_start'] = food_df['date'].apply(lambda x: x - timedelta(days=x.weekday()))
+        # Improved week grouping using isocalendar
+        food_df['year'] = food_df['date'].apply(lambda x: x.isocalendar()[0])
+        food_df['week'] = food_df['date'].apply(lambda x: x.isocalendar()[1])
         
-        weekly_totals = food_df.groupby('week_start').agg(
+        # Group by year and week to avoid year-over-week issues
+        weekly_totals = food_df.groupby(['year', 'week']).agg(
             total_calories=('calories', 'sum'),
             total_carbohydrate=('carbohydrate', 'sum'),
             total_fat=('fat', 'sum'),
-            total_protein=('protein', 'sum')
-        ).reset_index().sort_values('week_start')
+            total_protein=('protein', 'sum'),
+            week_start=('date', 'min')  # Get the first date of each week
+        ).reset_index().sort_values(['year', 'week'])
 
+        # Debug: show the raw data
+        st.write("Weekly Totals Data:", weekly_totals)
+        
         if not weekly_totals.empty:
+            # Convert to numeric just to be safe
+            numeric_cols = ['total_calories', 'total_carbohydrate', 'total_fat', 'total_protein']
+            weekly_totals[numeric_cols] = weekly_totals[numeric_cols].apply(pd.to_numeric, errors='coerce')
+            
             st.subheader("Weekly Calorie Intake Trend")
             st.line_chart(weekly_totals.set_index('week_start')['total_calories'])
 
             st.subheader("Weekly Macronutrient Intake Trend")
-            st.line_chart(weekly_totals.set_index('week_start')[['total_carbohydrate', 'total_fat', 'total_protein']])
+            # Explicitly select only the numeric columns we want to plot
+            macro_cols = ['total_carbohydrate', 'total_fat', 'total_protein']
+            st.line_chart(weekly_totals.set_index('week_start')[macro_cols])
         else:
             st.info("No weekly data to display.")
     else:
         st.info("No data available to calculate weekly trends.")
-
-
+        
     # --- Monthly Aggregated Trends ---
     st.header("🗓️ Monthly Aggregated Trends (All Historical Data)")
     if not food_df.empty:
