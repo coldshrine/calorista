@@ -4,6 +4,7 @@ import json
 import pandas as pd
 from datetime import datetime, timedelta
 import os
+import plotly.express as px
 from dotenv import load_dotenv
 import urllib.parse # Import urllib.parse to parse the Redis URL
 
@@ -248,66 +249,250 @@ if not food_df.empty:
             st.info(f"No entries found for the selected date range from {selected_start_date.strftime('%Y-%m-%d')} to {selected_end_date.strftime('%Y-%m-%d')}.")
 
 
-    # --- Weekly Aggregated Trends ---
 # --- Weekly Aggregated Trends ---
-    st.header("📈 Weekly Aggregated Trends (All Historical Data)")
-    if not food_df.empty:
-        # Improved week grouping using isocalendar
-        food_df['year'] = food_df['date'].apply(lambda x: x.isocalendar()[0])
-        food_df['week'] = food_df['date'].apply(lambda x: x.isocalendar()[1])
-        
-        # Group by year and week to avoid year-over-week issues
-        weekly_totals = food_df.groupby(['year', 'week']).agg(
-            total_calories=('calories', 'sum'),
-            total_carbohydrate=('carbohydrate', 'sum'),
-            total_fat=('fat', 'sum'),
-            total_protein=('protein', 'sum'),
-            week_start=('date', 'min')  # Get the first date of each week
-        ).reset_index().sort_values(['year', 'week'])
+st.header("📈 Weekly Aggregated Trends (All Historical Data)")
+if not food_df.empty:
+    # Improved week grouping using isocalendar
+    food_df['year'] = food_df['date'].apply(lambda x: x.isocalendar()[0])
+    food_df['week'] = food_df['date'].apply(lambda x: x.isocalendar()[1])
+    
+    # Group by year and week to avoid year-over-week issues
+    weekly_totals = food_df.groupby(['year', 'week']).agg(
+        total_calories=('calories', 'sum'),
+        total_carbohydrate=('carbohydrate', 'sum'),
+        total_fat=('fat', 'sum'),
+        total_protein=('protein', 'sum'),
+        week_start=('date', 'min'),  # Get the first date of each week
+        days_logged=('date', 'nunique')  # Count unique days with entries
+    ).reset_index().sort_values(['year', 'week'])
 
-        # Debug: show the raw data
-        st.write("Weekly Totals Data:", weekly_totals)
+    # Create a readable week label
+    weekly_totals['week_label'] = weekly_totals.apply(
+        lambda x: f"Week {x['week']} ({x['week_start'].strftime('%b %d')})", 
+        axis=1
+    )
+    
+    if not weekly_totals.empty:
+        # Convert to numeric just to be safe
+        numeric_cols = ['total_calories', 'total_carbohydrate', 'total_fat', 'total_protein']
+        weekly_totals[numeric_cols] = weekly_totals[numeric_cols].apply(pd.to_numeric, errors='coerce')
         
-        if not weekly_totals.empty:
-            # Convert to numeric just to be safe
-            numeric_cols = ['total_calories', 'total_carbohydrate', 'total_fat', 'total_protein']
-            weekly_totals[numeric_cols] = weekly_totals[numeric_cols].apply(pd.to_numeric, errors='coerce')
-            
-            st.subheader("Weekly Calorie Intake Trend")
-            st.line_chart(weekly_totals.set_index('week_start')['total_calories'])
-
-            st.subheader("Weekly Macronutrient Intake Trend")
-            # Explicitly select only the numeric columns we want to plot
-            macro_cols = ['total_carbohydrate', 'total_fat', 'total_protein']
-            st.line_chart(weekly_totals.set_index('week_start')[macro_cols])
-        else:
-            st.info("No weekly data to display.")
+        # Calculate daily averages
+        weekly_totals['avg_daily_calories'] = weekly_totals['total_calories'] / weekly_totals['days_logged']
+        weekly_totals['avg_daily_carbs'] = weekly_totals['total_carbohydrate'] / weekly_totals['days_logged']
+        weekly_totals['avg_daily_fat'] = weekly_totals['total_fat'] / weekly_totals['days_logged']
+        weekly_totals['avg_daily_protein'] = weekly_totals['total_protein'] / weekly_totals['days_logged']
+        
+        # Weekly Calorie Intake
+        st.subheader("Weekly Calorie Intake")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Total Calories by Week**")
+            fig = px.bar(
+                weekly_totals,
+                x='week_label',
+                y='total_calories',
+                labels={'total_calories': 'Total Calories', 'week_label': 'Week'},
+                color='total_calories',
+                color_continuous_scale='Bluered'
+            )
+            fig.update_layout(xaxis_tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.write("**Average Daily Calories by Week**")
+            fig = px.line(
+                weekly_totals,
+                x='week_label',
+                y='avg_daily_calories',
+                markers=True,
+                labels={'avg_daily_calories': 'Avg Daily Calories', 'week_label': 'Week'},
+                line_shape='spline'
+            )
+            fig.update_traces(line=dict(color='royalblue', width=3))
+            fig.update_layout(xaxis_tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Weekly Macros
+        st.subheader("Weekly Macronutrient Distribution")
+        
+        # Melt the dataframe for better plotting
+        weekly_macros = weekly_totals.melt(
+            id_vars=['week_label'], 
+            value_vars=['total_carbohydrate', 'total_fat', 'total_protein'],
+            var_name='Macronutrient', 
+            value_name='Amount (g)'
+        )
+        weekly_macros['Macronutrient'] = weekly_macros['Macronutrient'].str.replace('total_', '').str.capitalize()
+        
+        fig = px.bar(
+            weekly_macros,
+            x='week_label',
+            y='Amount (g)',
+            color='Macronutrient',
+            barmode='group',
+            labels={'week_label': 'Week'},
+            color_discrete_map={
+                'Carbohydrate': '#636EFA',
+                'Fat': '#EF553B',
+                'Protein': '#00CC96'
+            }
+        )
+        fig.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Weekly Macro Ratios
+        st.subheader("Weekly Macronutrient Ratios")
+        weekly_totals['total_macros'] = weekly_totals['total_carbohydrate'] + weekly_totals['total_fat'] + weekly_totals['total_protein']
+        weekly_totals['carb_ratio'] = weekly_totals['total_carbohydrate'] / weekly_totals['total_macros'] * 100
+        weekly_totals['fat_ratio'] = weekly_totals['total_fat'] / weekly_totals['total_macros'] * 100
+        weekly_totals['protein_ratio'] = weekly_totals['total_protein'] / weekly_totals['total_macros'] * 100
+        
+        ratio_df = weekly_totals.melt(
+            id_vars=['week_label'], 
+            value_vars=['carb_ratio', 'fat_ratio', 'protein_ratio'],
+            var_name='Macro', 
+            value_name='Percentage'
+        )
+        ratio_df['Macro'] = ratio_df['Macro'].str.replace('_ratio', '').str.capitalize()
+        
+        fig = px.area(
+            ratio_df,
+            x='week_label',
+            y='Percentage',
+            color='Macro',
+            labels={'week_label': 'Week', 'Percentage': 'Percentage (%)'},
+            color_discrete_map={
+                'Carb': '#636EFA',
+                'Fat': '#EF553B',
+                'Protein': '#00CC96'
+            }
+        )
+        fig.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Show data table
+        st.subheader("Weekly Summary Data")
+        display_cols = [
+            'week_label', 'total_calories', 'avg_daily_calories',
+            'total_carbohydrate', 'total_fat', 'total_protein',
+            'days_logged'
+        ]
+        st.dataframe(
+            weekly_totals[display_cols].rename(columns={
+                'week_label': 'Week',
+                'total_calories': 'Total Calories',
+                'avg_daily_calories': 'Avg Daily Calories',
+                'total_carbohydrate': 'Carbs (g)',
+                'total_fat': 'Fat (g)',
+                'total_protein': 'Protein (g)',
+                'days_logged': 'Days Logged'
+            }),
+            hide_index=True
+        )
     else:
-        st.info("No data available to calculate weekly trends.")
-        
-    # --- Monthly Aggregated Trends ---
-    st.header("🗓️ Monthly Aggregated Trends (All Historical Data)")
-    if not food_df.empty:
-        # Create a 'month_start' column
-        food_df['month_start'] = food_df['date'].apply(lambda x: x.replace(day=1))
-
-        monthly_totals = food_df.groupby('month_start').agg(
-            total_calories=('calories', 'sum'),
-            total_carbohydrate=('carbohydrate', 'sum'),
-            total_fat=('fat', 'sum'),
-            total_protein=('protein', 'sum')
-        ).reset_index().sort_values('month_start')
-
-        if not monthly_totals.empty:
-            st.subheader("Monthly Calorie Intake Trend")
-            st.line_chart(monthly_totals.set_index('month_start')['total_calories'])
-
-            st.subheader("Monthly Macronutrient Intake Trend")
-            st.line_chart(monthly_totals.set_index('month_start')[['total_carbohydrate', 'total_fat', 'total_protein']])
-        else:
-            st.info("No monthly data to display.")
-    else:
-        st.info("No data available to calculate monthly trends.")
-
+        st.info("No weekly data to display.")
 else:
-    st.info("No data to display. Please ensure Redis has 'food_entries:YYYY-MM-DD' keys with valid JSON data, and your connection details in the .env file are correct.")
+    st.info("No data available to calculate weekly trends.")
+
+# --- Monthly Aggregated Trends ---
+st.header("🗓️ Monthly Aggregated Trends (All Historical Data)")
+if not food_df.empty:
+    # Ensure 'date' is datetime and create 'month_start' as datetime
+    food_df['date'] = pd.to_datetime(food_df['date'])
+    food_df['month_start'] = food_df['date'].dt.to_period('M').dt.to_timestamp()
+    
+    # Create a readable month label
+    food_df['month_label'] = food_df['month_start'].dt.strftime('%b %Y')
+
+    monthly_totals = food_df.groupby(['month_start', 'month_label']).agg(
+        total_calories=('calories', 'sum'),
+        total_carbohydrate=('carbohydrate', 'sum'),
+        total_fat=('fat', 'sum'),
+        total_protein=('protein', 'sum'),
+        days_logged=('date', 'nunique')  # Count unique days with entries
+    ).reset_index().sort_values('month_start')
+
+    if not monthly_totals.empty:
+        # Calculate daily averages
+        monthly_totals['avg_daily_calories'] = monthly_totals['total_calories'] / monthly_totals['days_logged']
+        monthly_totals['avg_daily_carbs'] = monthly_totals['total_carbohydrate'] / monthly_totals['days_logged']
+        monthly_totals['avg_daily_fat'] = monthly_totals['total_fat'] / monthly_totals['days_logged']
+        monthly_totals['avg_daily_protein'] = monthly_totals['total_protein'] / monthly_totals['days_logged']
+        
+        # Monthly Calorie Intake
+        st.subheader("Monthly Calorie Intake")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Total Calories by Month**")
+            fig = px.bar(
+                monthly_totals,
+                x='month_label',
+                y='total_calories',
+                labels={'total_calories': 'Total Calories', 'month_label': 'Month'},
+                color='total_calories',
+                color_continuous_scale='thermal'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.write("**Average Daily Calories by Month**")
+            fig = px.line(
+                monthly_totals,
+                x='month_label',
+                y='avg_daily_calories',
+                markers=True,
+                labels={'avg_daily_calories': 'Avg Daily Calories', 'month_label': 'Month'},
+                line_shape='spline'
+            )
+            fig.update_traces(line=dict(color='firebrick', width=3))
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Monthly Macros
+        st.subheader("Monthly Macronutrient Distribution")
+        monthly_macros = monthly_totals.melt(
+            id_vars=['month_label'], 
+            value_vars=['total_carbohydrate', 'total_fat', 'total_protein'],
+            var_name='Macronutrient', 
+            value_name='Amount (g)'
+        )
+        monthly_macros['Macronutrient'] = monthly_macros['Macronutrient'].str.replace('total_', '').str.capitalize()
+        
+        fig = px.bar(
+            monthly_macros,
+            x='month_label',
+            y='Amount (g)',
+            color='Macronutrient',
+            barmode='group',
+            labels={'month_label': 'Month'},
+            color_discrete_map={
+                'Carbohydrate': '#636EFA',
+                'Fat': '#EF553B',
+                'Protein': '#00CC96'
+            }
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Show data table
+        st.subheader("Monthly Summary Data")
+        display_cols = [
+            'month_label', 'total_calories', 'avg_daily_calories',
+            'total_carbohydrate', 'total_fat', 'total_protein',
+            'days_logged'
+        ]
+        st.dataframe(
+            monthly_totals[display_cols].rename(columns={
+                'month_label': 'Month',
+                'total_calories': 'Total Calories',
+                'avg_daily_calories': 'Avg Daily Calories',
+                'total_carbohydrate': 'Carbs (g)',
+                'total_fat': 'Fat (g)',
+                'total_protein': 'Protein (g)',
+                'days_logged': 'Days Logged'
+            }),
+            hide_index=True
+        )
+    else:
+        st.info("No monthly data to display.")
+else:
+    st.info("No data available to calculate monthly trends.")
