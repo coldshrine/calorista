@@ -2,3 +2,4 @@ streamlit
 redis
 pandas
 python-dotenv
+plotly>=5.0.0
