@@ -2,7 +2,7 @@ name: Calorista Daily Tasks
 
 on:
   schedule:
-    - cron: '30 8 * * *'  # 8:30 AM UTC daily (adjust to your timezone)
+    - cron: '0 1 1-31 * *'  # At 01:00 on every day-of-month from 1 through 31 Kyiv
   workflow_dispatch:  # Allows manual runs from GitHub UI
 
 jobs:
