@@ -1,0 +1,51 @@
+name: Calorista Daily Tasks
+
+on:
+  schedule:
+    - cron: '30 8 * * *'  # 8:30 AM UTC daily (adjust to your timezone)
+  workflow_dispatch:  # Allows manual runs from GitHub UI
+
+jobs:
+  run-scripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevent hanging jobs
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r calorista/requirements.txt
+          
+      - name: Run main script
+        run: |
+          echo "Running main.py..."
+          python calorista/main.py || echo "Main script failed"
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          
+      - name: Run historical loader
+        run: |
+          echo "Running historical loader..."
+          python calorista/load_historical_to_redis.py || echo "Historical loader failed"
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "⚠️ Scheduled tasks failed! Check the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            })
