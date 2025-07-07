@@ -2,50 +2,69 @@ name: Calorista Daily Tasks
 
 on:
   schedule:
-    - cron: '30 8 * * *'  # 8:30 AM UTC daily (adjust to your timezone)
-  workflow_dispatch:  # Allows manual runs from GitHub UI
+    - cron: '0 1 * * *'  # 1 AM UTC daily (3 AM Kyiv time)
+  workflow_dispatch:
 
 jobs:
-  run-scripts:
+  daily-tasks:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Prevent hanging jobs
+    timeout-minutes: 10
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Set up Python 3.13
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
           
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          echo "📦 Installing dependencies..."
           pip install -r calorista/requirements.txt
+          
+      - name: Setup environment
+        run: |
+          echo "🕒 Timezone: $(date)"
+          echo "🐍 Python version: $(python --version)"
+          echo "📁 Working directory: $(pwd)"
+          echo "::notice::Environment setup complete"
           
       - name: Run main script
         run: |
-          echo "Running main.py..."
-          python calorista/main.py || echo "Main script failed"
+          echo "🚀 Starting main.py..."
+          python calorista/main.py 2>&1 | tee -a main.log
+          echo "::group::Main script output"
+          cat main.log
+          echo "::endgroup::"
         env:
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}  # This is correct syntax
+          TZ: 'Europe/Kiev'
           
       - name: Run historical loader
         run: |
-          echo "Running historical loader..."
-          python calorista/load_historical_to_redis.py || echo "Historical loader failed"
+          echo "🔄 Starting historical loader..."
+          python calorista/load_historical_to_redis.py 2>&1 | tee -a loader.log
+          echo "::group::Loader output"
+          cat loader.log
+          echo "::endgroup::"
         env:
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}  # Correct syntax
           
-      - name: Notify on failure
-        if: failure()
-        uses: actions/github-script@v6
+      - name: Archive logs
+        if: always()
+        uses: actions/upload-artifact@v3
         with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "⚠️ Scheduled tasks failed! Check the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            })
+          name: execution-logs
+          path: |
+            *.log
+          
+      - name: Completion status
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "::notice title=Success::✅ All tasks completed successfully!"
+          else
+            echo "::error title=Failed::❌ Some tasks failed"
+          fi
+          echo "📊 View run details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
