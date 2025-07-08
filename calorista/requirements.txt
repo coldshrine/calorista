@@ -3,4 +3,4 @@ redis
 pandas
 python-dotenv
 plotly>=5.0.0
-flask
+flask>=2.0.0

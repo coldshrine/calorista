@@ -24,7 +24,6 @@ jobs:
           echo "📦 Installing core dependencies..."
           pip install -r calorista/requirements.txt
           echo "➕ Installing additional required packages..."
-          pip install flask redis[hiredis]
           pip install flask 
           echo "✅ Dependencies installed"
           
