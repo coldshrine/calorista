@@ -21,10 +21,10 @@ jobs:
           
       - name: Install dependencies
         run: |
-          echo "📦 Installing core dependencies..."
+          echo "📦 Installing dependencies..."
           pip install -r calorista/requirements.txt
-          echo "➕ Installing additional required packages..."
-          pip install flask 
+          # Explicitly install Flask if not in requirements.txt
+          pip install flask redis pandas python-dotenv plotly
           echo "✅ Dependencies installed"
           
       - name: Setup environment
@@ -45,9 +45,15 @@ jobs:
           url = os.getenv('REDIS_URL')
           if not url:
               raise ValueError('REDIS_URL environment variable not set')
-          print(f'Connecting to Redis at {urlparse(url).hostname}')
-          r = redis.Redis.from_url(url)
-          print(f'✅ Redis ping: {r.ping()}')
+          parsed = urlparse(url)
+          print(f'Connecting to Redis at {parsed.hostname}:{parsed.port or 6379}')
+          r = redis.Redis.from_url(url, socket_connect_timeout=5)
+          try:
+              ping_response = r.ping()
+              print(f'✅ Redis ping successful: {ping_response}')
+          except Exception as e:
+              print(f'❌ Redis connection failed: {str(e)}')
+              raise
           "
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
@@ -55,10 +61,16 @@ jobs:
       - name: Run main script
         run: |
           echo "🚀 Starting main.py..."
+          set +e
           python calorista/main.py 2>&1 | tee main.log
+          MAIN_EXIT_CODE=${PIPESTATUS[0]}
           echo "::group::Main script output"
           cat main.log
           echo "::endgroup::"
+          if [ $MAIN_EXIT_CODE -ne 0 ]; then
+            echo "::error::Main script failed with exit code $MAIN_EXIT_CODE"
+            exit $MAIN_EXIT_CODE
+          fi
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           TZ: 'Europe/Kiev'
@@ -66,10 +78,16 @@ jobs:
       - name: Run historical loader
         run: |
           echo "🔄 Starting historical loader..."
+          set +e
           python calorista/load_historical_to_redis.py 2>&1 | tee loader.log
+          LOADER_EXIT_CODE=${PIPESTATUS[0]}
           echo "::group::Loader output"
           cat loader.log
           echo "::endgroup::"
+          if [ $LOADER_EXIT_CODE -ne 0 ]; then
+            echo "::error::Historical loader failed with exit code $LOADER_EXIT_CODE"
+            exit $LOADER_EXIT_CODE
+          fi
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           
@@ -84,8 +102,9 @@ jobs:
           retention-days: 3
           
       - name: Completion status
+        if: always()
         run: |
-          if grep -q "Traceback" main.log loader.log; then
+          if grep -q "Traceback" main.log loader.log || grep -q "Error" main.log loader.log; then
             echo "::error title=Failed::❌ Some tasks failed (check logs)"
             exit 1
           else
