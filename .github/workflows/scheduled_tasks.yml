@@ -8,7 +8,7 @@ on:
 jobs:
   daily-tasks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15  # Increased timeout for historical loading
     
     steps:
       - name: Checkout code
@@ -22,11 +22,12 @@ jobs:
       - name: Install dependencies
         run: |
           echo "📦 Installing dependencies..."
-          pip install -r calorista/requirements.txt
+          pip install -r calorista/requirements.txt flask redis
+          echo "✅ Dependencies installed"
           
       - name: Setup environment
         run: |
-          echo "🕒 Timezone: $(date)"
+          echo "🕒 Timezone: $(TZ='Europe/Kiev' date)"
           echo "🐍 Python version: $(python --version)"
           echo "📁 Working directory: $(pwd)"
           echo "::notice::Environment setup complete"
@@ -45,12 +46,30 @@ jobs:
       - name: Run historical loader
         run: |
           echo "🔄 Starting historical loader..."
+          echo "🔍 Verifying Redis connection..."
+          python -c "
+          import os, redis
+          from urllib.parse import urlparse
+          url = os.getenv('REDIS_URL')
+          if not url:
+              print('❌ REDIS_URL not set')
+              exit(1)
+          try:
+              r = redis.Redis.from_url(url)
+              print(f'✅ Redis ping: {r.ping()}')
+          except Exception as e:
+              print(f'❌ Redis connection failed: {str(e)}')
+              exit(1)
+          "
+          
+          echo "📂 Loading historical data..."
           python calorista/load_historical_to_redis.py 2>&1 | tee loader.log
           echo "::group::Loader output"
           cat loader.log
           echo "::endgroup::"
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
+          TZ: 'Europe/Kiev'
           
       - name: Upload logs
         if: always()
@@ -64,9 +83,9 @@ jobs:
           
       - name: Completion status
         run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "::notice title=Success::✅ All tasks completed successfully!"
+          if grep -q "❌" main.log loader.log 2>/dev/null; then
+            echo "::error title=Failed::❌ Some tasks failed (check logs)"
           else
-            echo "::error title=Failed::❌ Some tasks failed"
+            echo "::notice title=Success::✅ All tasks completed successfully!"
           fi
           echo "📊 View run details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
