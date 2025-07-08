@@ -2,8 +2,8 @@ name: Calorista Daily Tasks
 
 on:
   schedule:
-    - cron: '0 1 1-31 * *'  # At 01:00 on every day-of-month from 1 through 31 Kyiv
-  workflow_dispatch:  # Allows manual runs from GitHub UI
+    - cron: '0 1 * * *'  # Simplified to run daily at 1 AM UTC (3 AM Kyiv)
+  workflow_dispatch:
 
 jobs:
   daily-tasks:
@@ -39,7 +39,7 @@ jobs:
           cat main.log
           echo "::endgroup::"
         env:
-          REDIS_URL: ${{ secrets.REDIS_URL }}  # This is correct syntax
+          REDIS_URL: ${{ secrets.REDIS_URL }}
           TZ: 'Europe/Kiev'
           
       - name: Run historical loader
@@ -50,15 +50,16 @@ jobs:
           cat loader.log
           echo "::endgroup::"
         env:
-          REDIS_URL: ${{ secrets.REDIS_URL }}  # Correct syntax
+          REDIS_URL: ${{ secrets.REDIS_URL }}
           
       - name: Archive logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # Updated to v4
         with:
           name: execution-logs
           path: |
-            *.log
+            main.log
+            loader.log
           
       - name: Completion status
         run: |
