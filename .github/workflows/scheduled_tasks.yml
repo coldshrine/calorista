@@ -2,13 +2,13 @@ name: Calorista Daily Tasks
 
 on:
   schedule:
-    - cron: '0 1 * * *'  # Daily at 1 AM UTC (3 AM Kyiv)
+    - cron: '0 1 * * *'  # 1 AM UTC (3 AM Kyiv)
   workflow_dispatch:
 
 jobs:
   daily-tasks:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Increased timeout for historical loading
+    timeout-minutes: 15
     
     steps:
       - name: Checkout code
@@ -21,8 +21,10 @@ jobs:
           
       - name: Install dependencies
         run: |
-          echo "📦 Installing dependencies..."
-          pip install -r calorista/requirements.txt flask redis
+          echo "📦 Installing core dependencies..."
+          pip install -r calorista/requirements.txt
+          echo "➕ Installing additional required packages..."
+          pip install flask redis[hiredis]
           echo "✅ Dependencies installed"
           
       - name: Setup environment
@@ -30,7 +32,25 @@ jobs:
           echo "🕒 Timezone: $(TZ='Europe/Kiev' date)"
           echo "🐍 Python version: $(python --version)"
           echo "📁 Working directory: $(pwd)"
+          echo "🔍 Installed packages:"
+          pip list
           echo "::notice::Environment setup complete"
+          
+      - name: Verify Redis connection
+        run: |
+          echo "🔍 Testing Redis connection..."
+          python -c "
+          import os, redis
+          from urllib.parse import urlparse
+          url = os.getenv('REDIS_URL')
+          if not url:
+              raise ValueError('REDIS_URL environment variable not set')
+          print(f'Connecting to Redis at {urlparse(url).hostname}')
+          r = redis.Redis.from_url(url)
+          print(f'✅ Redis ping: {r.ping()}')
+          "
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
           
       - name: Run main script
         run: |
@@ -46,30 +66,12 @@ jobs:
       - name: Run historical loader
         run: |
           echo "🔄 Starting historical loader..."
-          echo "🔍 Verifying Redis connection..."
-          python -c "
-          import os, redis
-          from urllib.parse import urlparse
-          url = os.getenv('REDIS_URL')
-          if not url:
-              print('❌ REDIS_URL not set')
-              exit(1)
-          try:
-              r = redis.Redis.from_url(url)
-              print(f'✅ Redis ping: {r.ping()}')
-          except Exception as e:
-              print(f'❌ Redis connection failed: {str(e)}')
-              exit(1)
-          "
-          
-          echo "📂 Loading historical data..."
           python calorista/load_historical_to_redis.py 2>&1 | tee loader.log
           echo "::group::Loader output"
           cat loader.log
           echo "::endgroup::"
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
-          TZ: 'Europe/Kiev'
           
       - name: Upload logs
         if: always()
@@ -83,8 +85,9 @@ jobs:
           
       - name: Completion status
         run: |
-          if grep -q "❌" main.log loader.log 2>/dev/null; then
+          if grep -q "Traceback" main.log loader.log; then
             echo "::error title=Failed::❌ Some tasks failed (check logs)"
+            exit 1
           else
             echo "::notice title=Success::✅ All tasks completed successfully!"
           fi
