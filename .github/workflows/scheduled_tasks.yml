@@ -2,7 +2,7 @@ name: Calorista Daily Tasks
 
 on:
   schedule:
-    - cron: '0 1 * * *'  # Simplified to run daily at 1 AM UTC (3 AM Kyiv)
+    - cron: '0 1 * * *'  # Daily at 1 AM UTC (3 AM Kyiv)
   workflow_dispatch:
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
       - name: Run main script
         run: |
           echo "🚀 Starting main.py..."
-          python calorista/main.py 2>&1 | tee -a main.log
+          python calorista/main.py 2>&1 | tee main.log
           echo "::group::Main script output"
           cat main.log
           echo "::endgroup::"
@@ -45,21 +45,22 @@ jobs:
       - name: Run historical loader
         run: |
           echo "🔄 Starting historical loader..."
-          python calorista/load_historical_to_redis.py 2>&1 | tee -a loader.log
+          python calorista/load_historical_to_redis.py 2>&1 | tee loader.log
           echo "::group::Loader output"
           cat loader.log
           echo "::endgroup::"
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           
-      - name: Archive logs
+      - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v4  # Updated to v4
+        uses: actions/upload-artifact@v4
         with:
           name: execution-logs
           path: |
             main.log
             loader.log
+          retention-days: 3
           
       - name: Completion status
         run: |
