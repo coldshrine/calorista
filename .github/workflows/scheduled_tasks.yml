@@ -23,7 +23,6 @@ jobs:
         run: |
           echo "📦 Installing dependencies..."
           pip install -r calorista/requirements.txt
-          # Explicitly install Flask if not in requirements.txt
           pip install flask redis pandas python-dotenv plotly
           echo "✅ Dependencies installed"
           
@@ -56,7 +55,7 @@ jobs:
               raise
           "
         env:
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          REDIS_URL: redis://default:${{ secrets.UPSTASH_REST_TOKEN }}@gentle-eagle-30096.upstash.io:6379
           
       - name: Run main script
         run: |
@@ -72,7 +71,7 @@ jobs:
             exit $MAIN_EXIT_CODE
           fi
         env:
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          REDIS_URL: redis://default:${{ secrets.UPSTASH_REST_TOKEN }}@gentle-eagle-30096.upstash.io:6379
           TZ: 'Europe/Kiev'
           
       - name: Run historical loader
@@ -89,7 +88,8 @@ jobs:
             exit $LOADER_EXIT_CODE
           fi
         env:
-          REDIS_URL: ${{ secrets.REDIS_URL }}
+          REDIS_URL: redis://default:${{ secrets.UPSTASH_REST_TOKEN }}@gentle-eagle-30096.upstash.io:6379
+          TZ: 'Europe/Kiev'
           
       - name: Upload logs
         if: always()
