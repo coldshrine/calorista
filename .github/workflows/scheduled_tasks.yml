@@ -39,21 +39,21 @@ jobs:
         run: |
           echo "🔍 Testing Redis connection..."
           python -c "
-          import os, redis
-          from urllib.parse import urlparse
-          url = os.getenv('REDIS_URL')
-          if not url:
-              raise ValueError('REDIS_URL environment variable not set')
-          parsed = urlparse(url)
-          print(f'Connecting to Redis at {parsed.hostname}:{parsed.port or 6379}')
-          r = redis.Redis.from_url(url, socket_connect_timeout=5)
-          try:
-              ping_response = r.ping()
-              print(f'✅ Redis ping successful: {ping_response}')
-          except Exception as e:
-              print(f'❌ Redis connection failed: {str(e)}')
-              raise
-          "
+import os, redis
+from urllib.parse import urlparse
+url = os.getenv('REDIS_URL')
+if not url:
+    raise ValueError('REDIS_URL environment variable not set')
+parsed = urlparse(url)
+print(f'Connecting to Redis at {parsed.hostname}:{parsed.port or 6379}')
+r = redis.Redis.from_url(url, socket_connect_timeout=5)
+try:
+    ping_response = r.ping()
+    print(f'✅ Redis ping successful: {ping_response}')
+except Exception as e:
+    print(f'❌ Redis connection failed: {str(e)}')
+    raise
+"
         env:
           REDIS_URL: redis://default:${{ secrets.UPSTASH_REST_TOKEN }}@gentle-eagle-30096.upstash.io:6379
           
