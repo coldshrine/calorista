@@ -11,13 +11,8 @@ from pathlib import Path
 import requests
 from flask import Flask, request
 
-from .constants import (
-    CALLBACK_URL,
-    CONSUMER_KEY,
-    CONSUMER_SECRET,
-    OAUTH_SIGNATURE_METHOD,
-    OAUTH_VERSION,
-)
+from .constants import (CALLBACK_URL, CONSUMER_KEY, CONSUMER_SECRET,
+                        OAUTH_SIGNATURE_METHOD, OAUTH_VERSION)
 
 
 class TokenManager:
@@ -49,7 +44,7 @@ class TokenManager:
 
 class FatSecretAuth:
     def __init__(self, token_file: str = "fatsecret_tokens.json"):
-        self.token_file = token_file 
+        self.token_file = token_file
         self.verifier = None
         self.oauth_token = None
         self.app = Flask(__name__)

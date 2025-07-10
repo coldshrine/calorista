@@ -1,18 +1,21 @@
 import datetime
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List
 
 from utils.api import FatSecretAPI
 from utils.auth import FatSecretAuth
 
-def process_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+
+def process_historical_entries(
+    api: FatSecretAPI, start_date: str, end_date: str
+) -> List[Dict[str, Any]]:
     """Process historical food entries between two dates."""
     all_entries: List[Dict[str, Any]] = []
     try:
         print(f"\nFetching historical food entries from {start_date} to {end_date}...")
         historical_entries = api.get_historical_food_entries(start_date, end_date)
-        
+
         if not historical_entries:
             print("⚠️ No historical entries received from API")
             return all_entries
@@ -20,14 +23,14 @@ def process_historical_entries(api: FatSecretAPI, start_date: str, end_date: str
         for daily_result in historical_entries:
             if not daily_result:
                 continue
-                
+
             date = daily_result.get("date", "unknown date")
             food_entries = daily_result.get("food_entries", {})
-            
+
             entries = food_entries.get("food_entry", [])
-            if isinstance(entries, dict): 
+            if isinstance(entries, dict):
                 entries = [entries]
-            
+
             if entries:
                 all_entries.extend(entries)
             else:
@@ -39,6 +42,7 @@ def process_historical_entries(api: FatSecretAPI, start_date: str, end_date: str
     except Exception as e:
         print(f"⚠️ Error processing historical entries: {e}")
         return all_entries
+
 
 def main():
     # Initialize API client
@@ -74,8 +78,12 @@ def main():
     # Process historical food entries
     start_date = "2025-04-07"
     # If no entries today, set end date to yesterday
-    end_date = (today - datetime.timedelta(days=1)).strftime("%Y-%m-%d") if not has_todays_entries else today_str
-    
+    end_date = (
+        (today - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        if not has_todays_entries
+        else today_str
+    )
+
     all_entries = process_historical_entries(api, start_date, end_date)
 
     # Save to file if we have entries
@@ -83,11 +91,14 @@ def main():
         output_dir = Path("historical_food_data")
         output_dir.mkdir(exist_ok=True)
 
-        json_path = output_dir / f"historical_food_entries_{start_date}_to_{end_date}.json"
+        json_path = (
+            output_dir / f"historical_food_entries_{start_date}_to_{end_date}.json"
+        )
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(all_entries, f, ensure_ascii=False, indent=2)
 
         print(f"📦 JSON saved to {json_path}")
+
 
 if __name__ == "__main__":
     main()

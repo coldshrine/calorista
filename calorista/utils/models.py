@@ -24,6 +24,7 @@ class UserProfile:
             last_weight_comment=data.get("last_weight_comment"),
         )
 
+
 @dataclass
 class FoodEntry:
     date_int: str

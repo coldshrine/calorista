@@ -1,14 +1,14 @@
 import base64
 import hashlib
 import hmac
+import json
 import time
 import urllib.parse
 from datetime import datetime
-import json
 
+import redis
 import requests
 from requests.exceptions import RequestException
-import redis
 
 from .auth import FatSecretAuth
 from .constants import CONSUMER_KEY, CONSUMER_SECRET, REDIS_URL
@@ -133,7 +133,8 @@ class FatSecretAPI:
         Returns:
             Dictionary containing food entries data
         """
-        from datetime import datetime, date as date_cls
+        from datetime import date as date_cls
+        from datetime import datetime
 
         # convert date string to int days since epoch
         date_obj = datetime.strptime(date, "%Y-%m-%d").date()
@@ -221,7 +222,9 @@ class FatSecretAPI:
         while current <= end:
             days_since_epoch = (current - datetime(1970, 1, 1).date()).days
             try:
-                data = self._make_request("food_entries.get.v2", {"date": days_since_epoch})
+                data = self._make_request(
+                    "food_entries.get.v2", {"date": days_since_epoch}
+                )
                 all_entries.append(data)
             except Exception as e:
                 print(f"[{current}] Failed to fetch entries: {e}")
@@ -232,9 +235,11 @@ class FatSecretAPI:
 
 redis_client = redis.Redis.from_url(REDIS_URL)
 
+
 def cache_food_entries_to_redis(entries: list[dict], date_str: str) -> None:
     key = f"food_entries:{date_str}"
     redis_client.set(key, json.dumps(entries))
+
 
 def get_cached_food_entries(date_str: str) -> list[dict] | None:
     key = f"food_entries:{date_str}"
