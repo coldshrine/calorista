@@ -48,6 +48,9 @@ def main():
     # Initialize API client
     BASE_DIR = Path(__file__).resolve().parent.parent
     token_file = BASE_DIR / "auth_tokens" / "tokens.json"
+    if not token_file.exists():
+        print(f"❌ Token file not found at: {token_file}")
+        return
     auth = FatSecretAuth(token_file=str(token_file))
     api = FatSecretAPI(auth)
 

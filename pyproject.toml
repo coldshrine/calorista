@@ -12,6 +12,11 @@ packages = [{include = "calorista"}]
 python = "^3.13"
 flask = "^3.1.0"
 requests = "^2.32.0"
+streamlit = "*"
+redis = "*"
+pandas = "*"
+python-dotenv = "*"
+plotly = ">=5.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^3.3.7"
