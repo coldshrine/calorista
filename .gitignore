@@ -1,4 +1,3 @@
-# Overwrite .gitignore with correct entries
 cat > .gitignore <<EOL
 # Python
 __pycache__/
@@ -9,7 +8,6 @@ __pycache__/
 env/
 venv/
 
-# Secrets
 auth_tokens/
 .env
 EOL
