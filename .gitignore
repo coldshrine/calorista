@@ -10,7 +10,6 @@ env/
 venv/
 .EOL
 
-# Then clean git cache
 git rm -r --cached .
 git add .
 calorista/utils/__pycache__/__init__.cpython-313.pyc
