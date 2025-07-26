@@ -126,7 +126,7 @@ def get_browser_url() -> Optional[str]:
 
 def main():
     # Load environment variables first
-    env_path = Path(__file__).parent.parent.parent / ".env"
+    env_path = Path(__file__).parent.parent / ".env"
     print(f"Loading .env from: {env_path}")
     
     if not env_path.exists():

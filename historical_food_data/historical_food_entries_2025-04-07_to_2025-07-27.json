@@ -18203,16 +18203,15 @@
     "carbohydrate": "0.75",
     "date_int": "20296",
     "fat": "1.20",
-    "food_entry_description": "0.3 :custom:30 g Наша Ряба Рябchick Зі Смаком Сиру Гауда",
-    "food_entry_id": "20656579608",
-    "food_entry_name": "Наша Ряба Рябchick Зі Смаком Сиру Гауда",
-    "food_id": "75868841",
+    "food_entry_description": "0.3 :custom:0,3 x 100г, 30 g Наша Ряба Рябchick Зі Смаком Сиру",
+    "food_entry_id": "20656786549",
+    "food_entry_name": "Наша Ряба Рябchick Зі Смаком Сиру",
+    "food_id": "77690012",
     "meal": "Other",
     "number_of_units": "0.300",
     "protein": "22.83",
     "saturated_fat": "0.270",
-    "serving_id": "61617484",
-    "sodium": "1680",
+    "serving_id": "62987344",
     "sugar": "0.15"
   }
 ]
