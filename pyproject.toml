@@ -9,7 +9,7 @@ readme = "README.md"
 packages = [{include = "calorista"}]
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = ">=3.13,<3.14"
 flask = "^3.1.0"
 requests = "^2.32.0"
 streamlit = "*"
@@ -17,6 +17,7 @@ redis = "*"
 pandas = "*"
 python-dotenv = "*"
 plotly = ">=5.0.0"
+prefect = "^3.4.12"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^3.3.7"
