@@ -20891,20 +20891,20 @@
     "sugar": "10.26"
   },
   {
-    "calories": "197",
-    "carbohydrate": "32.80",
+    "calories": "393",
+    "carbohydrate": "65.60",
     "date_int": "20312",
-    "fat": "5.90",
-    "food_entry_description": "1/2 :custom:1/2 x 100г, 50 g Pikkolo Rice Chips Chanterelles Sour Cream",
+    "fat": "11.80",
+    "food_entry_description": "1 :custom:100г (100 g) Pikkolo Rice Chips Chanterelles Sour Cream",
     "food_entry_id": "20804312903",
     "food_entry_name": "Pikkolo Rice Chips Chanterelles Sour Cream",
     "food_id": "95253021",
     "meal": "Other",
-    "number_of_units": "0.500",
-    "protein": "3.10",
-    "saturated_fat": "0.750",
+    "number_of_units": "1.000",
+    "protein": "6.20",
+    "saturated_fat": "1.500",
     "serving_id": "76127093",
-    "sugar": "0.85"
+    "sugar": "1.70"
   },
   {
     "calories": "122",
