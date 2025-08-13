@@ -11,3 +11,4 @@ venv/
 auth_tokens/
 .env
 EOL
+create_prefect_secrets.py
