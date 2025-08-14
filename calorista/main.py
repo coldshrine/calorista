@@ -91,7 +91,7 @@ def main():
 
     # Save to file if we have entries
     if all_entries:
-        output_dir = Path("historical_food_data")
+        output_dir = Path("food")
         output_dir.mkdir(exist_ok=True)
 
         json_path = (

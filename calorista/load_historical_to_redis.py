@@ -60,7 +60,7 @@ def get_existing_entry_ids(redis_client: redis.Redis, date: str) -> set:
 
 def process_latest_file(redis_client: redis.Redis):
     """Properly handles incremental loading of new entries"""
-    historical_dir = Path(__file__).parent.parent / "historical_food_data"
+    historical_dir = Path(__file__).parent.parent / "food"
     file_path = get_latest_file(historical_dir)
     print(f"🔍 Processing latest file: {file_path.name}")
 
