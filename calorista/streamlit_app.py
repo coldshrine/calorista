@@ -44,7 +44,7 @@ def get_redis_connection():
             ssl=True,
             ssl_cert_reqs=None,  # Or provide certs if specific validation is needed
         )
-        r.ping()  # Test connection
+        r.ping()
         st.success("Successfully connected to Redis!")
         return r
     except redis.exceptions.ConnectionError as e:
