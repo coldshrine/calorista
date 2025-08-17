@@ -40,8 +40,8 @@ def get_redis_connection():
             host=redis_host,
             port=redis_port,
             password=redis_password,
-            decode_responses=True,  # Decode Redis responses to string
-            ssl=True,  # Explicitly enable SSL
+            decode_responses=True,
+            ssl=True,
             ssl_cert_reqs=None,  # Or provide certs if specific validation is needed
         )
         r.ping()  # Test connection
