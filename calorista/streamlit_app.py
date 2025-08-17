@@ -42,7 +42,7 @@ def get_redis_connection():
             password=redis_password,
             decode_responses=True,
             ssl=True,
-            ssl_cert_reqs=None,  # Or provide certs if specific validation is needed
+            ssl_cert_reqs=None,
         )
         r.ping()
         st.success("Successfully connected to Redis!")
