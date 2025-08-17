@@ -1,17 +1,60 @@
-import datetime
 import json
+import os
+import ssl
+from collections import defaultdict
+from datetime import datetime, timedelta, date
 from pathlib import Path
 from typing import Any, Dict, List
+from urllib.parse import urlparse
+
+import redis
+from dotenv import load_dotenv
+import pytz
 
 from utils.api import FatSecretAPI
 from utils.auth import FatSecretAuth
 
+load_dotenv()
 
-def process_historical_entries(
-    api: FatSecretAPI, start_date: str, end_date: str
-) -> List[Dict[str, Any]]:
-    """Process historical food entries between two dates."""
+REDIS_FOOD_ENTRIES_PREFIX = "food_entries:"
+REDIS_DATE_MAPPINGS_KEY = "date_mappings"
+REDIS_URL = os.getenv("REDIS_URL")
+
+KYIV_TZ = pytz.timezone('Europe/Kiev')
+
+def get_current_date() -> date:
+    """Get current date in Kyiv timezone"""
+    kyiv_time = datetime.now(KYIV_TZ)
+    print(f"\nCurrent time in Kyiv: {kyiv_time}")
+    return kyiv_time.date()
+
+def convert_days_to_date(days_str: str) -> str:
+    try:
+        days = int(float(days_str))
+        return (datetime(1970, 1, 1) + timedelta(days=days)).strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+
+def create_redis_connection():
+    parsed = urlparse(REDIS_URL)
+    return redis.Redis(
+        host=parsed.hostname,
+        port=parsed.port,
+        password=parsed.password,
+        ssl=True,
+        ssl_cert_reqs=ssl.CERT_NONE,
+        decode_responses=False,
+    )
+
+def create_entry_fingerprint(entry: dict) -> str:
+    """Create a unique fingerprint for an entry to detect duplicates"""
+    return f"{entry.get('food_entry_id', '')}_{entry.get('date_int', '')}_{entry.get('timestamp', '')}"
+
+def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+    """Fetch historical entries with duplicate detection"""
     all_entries: List[Dict[str, Any]] = []
+    seen_entries = set()
+    
     try:
         print(f"\nFetching historical food entries from {start_date} to {end_date}...")
         historical_entries = api.get_historical_food_entries(start_date, end_date)
@@ -24,84 +67,128 @@ def process_historical_entries(
             if not daily_result:
                 continue
 
-            date = daily_result.get("date", "unknown date")
-            food_entries = daily_result.get("food_entries", {})
-
-            entries = food_entries.get("food_entry", [])
+            entries = daily_result.get("food_entries", {}).get("food_entry", [])
             if isinstance(entries, dict):
                 entries = [entries]
 
-            if entries:
-                all_entries.extend(entries)
-            else:
-                print(f"⚠️ No food entries on {date}")
+            for entry in entries:
+                if not entry.get("food_entry_id"):
+                    continue
+                    
+                fingerprint = create_entry_fingerprint(entry)
+                if fingerprint not in seen_entries:
+                    seen_entries.add(fingerprint)
+                    all_entries.append(entry)
+                else:
+                    print(f"⚠️ Duplicate entry skipped: {entry['food_entry_name']} on {entry.get('date_int')}")
 
-        print(f"\n✅ Retrieved {len(all_entries)} historical food entries.")
+        print(f"\n✅ Retrieved {len(all_entries)} unique historical food entries.")
         return all_entries
 
     except Exception as e:
         print(f"⚠️ Error processing historical entries: {e}")
         return all_entries
 
+def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any]]):
+    date_groups = defaultdict(list)
+    loaded_count = 0
+    skipped_count = 0
+
+    for entry in entries:
+        if "date_int" not in entry or "food_entry_id" not in entry:
+            skipped_count += 1
+            continue
+
+        human_date = convert_days_to_date(entry["date_int"])
+        if not human_date:
+            skipped_count += 1
+            continue
+
+        date_groups[human_date].append(entry)
+        loaded_count += 1
+
+    for date, new_entries in date_groups.items():
+        redis_key = f"{REDIS_FOOD_ENTRIES_PREFIX}{date}"
+        
+        existing_entries = []
+        if redis_client.exists(redis_key):
+            existing_entries = json.loads(redis_client.get(redis_key))
+
+        existing_fingerprints = {
+            create_entry_fingerprint(e): e 
+            for e in existing_entries 
+            if "food_entry_id" in e
+        }
+
+        entries_to_update = []
+        for entry in new_entries:
+            fingerprint = create_entry_fingerprint(entry)
+            if fingerprint not in existing_fingerprints:
+                entries_to_update.append(entry)
+            elif entry != existing_fingerprints[fingerprint]:
+                entries_to_update.append(entry)
+
+        if entries_to_update:
+            updated_entries = [
+                e for e in existing_entries
+                if create_entry_fingerprint(e) not in 
+                   {create_entry_fingerprint(ne) for ne in entries_to_update}
+            ]
+            updated_entries.extend(entries_to_update)
+            
+            redis_client.set(redis_key, json.dumps(updated_entries))
+            redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date, str(new_entries[0]["date_int"]))
+            print(f"✅ Updated {len(entries_to_update)} entries for {date}")
+        else:
+            print(f"⏩ No changes needed for {date}")
+
+    print("\n📊 Final Summary:")
+    print(f"Total entries processed: {len(entries)}")
+    print(f"Entries available for loading: {loaded_count}")
+    print(f"Entries skipped (invalid): {skipped_count}")
 
 def main():
-    # Initialize API client
-    BASE_DIR = Path(__file__).resolve().parent.parent
-    token_file = BASE_DIR / "auth_tokens" / "tokens.json"
-    if not token_file.exists():
-        print(f"❌ Token file not found at: {token_file}")
-        return
-    auth = FatSecretAuth(token_file=str(token_file))
-    api = FatSecretAPI(auth)
-
     try:
-        # Get and display current weight
-        profile = api.get_user_weight()
-        print(f"Hello! Your current weight is {profile.last_weight_kg}kg")
+        BASE_DIR = Path(__file__).resolve().parent.parent
+        token_file = BASE_DIR / "auth_tokens" / "tokens.json"
+        if not token_file.exists():
+            print(f"❌ Token file not found at: {token_file}")
+            return
+        auth = FatSecretAuth(token_file=str(token_file))
+        api = FatSecretAPI(auth)
+
+        try:
+            profile = api.get_user_weight()
+            print(f"Hello! Your current weight is {profile.last_weight_kg}kg")
+        except Exception as e:
+            print(f"⚠️ Error getting weight profile: {e}")
+
+        today = get_current_date()
+        today_str = today.strftime("%Y-%m-%d")
+
+        start_date = "2025-04-07"
+        all_entries = get_historical_entries(api, start_date, today_str)
+
+        if not all_entries:
+            print("No entries to process")
+            return
+
+        if not REDIS_URL:
+            print("❌ REDIS_URL environment variable not found")
+            return
+
+        print("🔌 Connecting to Redis...")
+        redis_client = create_redis_connection()
+        redis_client.ping()
+        print("✅ Connected successfully")
+
+        load_entries_to_redis(redis_client, all_entries)
+
     except Exception as e:
-        print(f"⚠️ Error getting weight profile: {e}")
-
-    # Get today's date
-    today = datetime.date.today()
-    today_str = today.strftime("%Y-%m-%d")
-
-    # Process today's food entries
-    has_todays_entries = False
-    try:
-        todays_food_entries = api.get_todays_food_entries(today_str)
-        if todays_food_entries and todays_food_entries.get("food_entries"):
-            print("\nToday's Food Entries:")
-            print(json.dumps(todays_food_entries, indent=4, ensure_ascii=False))
-            has_todays_entries = True
-        else:
-            print("\n⚠️ No food entries found for today")
-    except Exception as e:
-        print(f"\n⚠️ Error getting today's food entries: {e}")
-
-    # Process historical food entries
-    start_date = "2025-04-07"
-    # If no entries today, set end date to yesterday
-    end_date = (
-        (today - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-        if not has_todays_entries
-        else today_str
-    )
-
-    all_entries = process_historical_entries(api, start_date, end_date)
-
-    # Save to file if we have entries
-    if all_entries:
-        output_dir = Path("food")
-        output_dir.mkdir(exist_ok=True)
-
-        json_path = (
-            output_dir / f"historical_food_entries_{start_date}_to_{end_date}.json"
-        )
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(all_entries, f, ensure_ascii=False, indent=2)
-
-        print(f"📦 JSON saved to {json_path}")
-
+        print(f"❌ Error: {str(e)}")
+    finally:
+        if "redis_client" in locals():
+            redis_client.close()
 
 if __name__ == "__main__":
     main()
