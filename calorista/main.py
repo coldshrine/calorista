@@ -20,7 +20,6 @@ REDIS_FOOD_ENTRIES_PREFIX = "food_entries:"
 REDIS_DATE_MAPPINGS_KEY = "date_mappings"
 REDIS_URL = os.getenv("REDIS_URL")
 
-# Set the timezone for Kyiv
 KYIV_TZ = pytz.timezone('Europe/Kiev')
 
 def get_current_date() -> date:
@@ -95,7 +94,6 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
     loaded_count = 0
     skipped_count = 0
 
-    # First pass: group by date and validate entries
     for entry in entries:
         if "date_int" not in entry or "food_entry_id" not in entry:
             skipped_count += 1
@@ -109,23 +107,19 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
         date_groups[human_date].append(entry)
         loaded_count += 1
 
-    # Second pass: update Redis for each date
     for date, new_entries in date_groups.items():
         redis_key = f"{REDIS_FOOD_ENTRIES_PREFIX}{date}"
         
-        # Get existing entries from Redis
         existing_entries = []
         if redis_client.exists(redis_key):
             existing_entries = json.loads(redis_client.get(redis_key))
 
-        # Create lookup of existing entries by fingerprint
         existing_fingerprints = {
             create_entry_fingerprint(e): e 
             for e in existing_entries 
             if "food_entry_id" in e
         }
 
-        # Determine which entries need to be added/updated
         entries_to_update = []
         for entry in new_entries:
             fingerprint = create_entry_fingerprint(entry)
@@ -135,7 +129,6 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
                 entries_to_update.append(entry)
 
         if entries_to_update:
-            # Create new entry set, preserving existing entries that aren't being updated
             updated_entries = [
                 e for e in existing_entries
                 if create_entry_fingerprint(e) not in 
@@ -170,11 +163,9 @@ def main():
         except Exception as e:
             print(f"⚠️ Error getting weight profile: {e}")
 
-        # Get current date in Kyiv timezone
         today = get_current_date()
         today_str = today.strftime("%Y-%m-%d")
 
-        # Get historical entries including today
         start_date = "2025-04-07"
         all_entries = get_historical_entries(api, start_date, today_str)
 
