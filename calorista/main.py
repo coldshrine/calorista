@@ -22,11 +22,13 @@ REDIS_URL = os.getenv("REDIS_URL")
 
 KYIV_TZ = pytz.timezone('Europe/Kiev')
 
+
 def get_current_date() -> date:
     """Get current date in Kyiv timezone"""
     kyiv_time = datetime.now(KYIV_TZ)
     print(f"\nCurrent time in Kyiv: {kyiv_time}")
     return kyiv_time.date()
+
 
 def convert_days_to_date(days_str: str) -> str:
     try:
@@ -34,6 +36,7 @@ def convert_days_to_date(days_str: str) -> str:
         return (datetime(1970, 1, 1) + timedelta(days=days)).strftime("%Y-%m-%d")
     except (ValueError, TypeError):
         return None
+
 
 def create_redis_connection():
     parsed = urlparse(REDIS_URL)
@@ -46,18 +49,22 @@ def create_redis_connection():
         decode_responses=False,
     )
 
+
 def create_entry_fingerprint(entry: dict) -> str:
     """Create a unique fingerprint for an entry to detect duplicates"""
     return f"{entry.get('food_entry_id', '')}_{entry.get('date_int', '')}_{entry.get('timestamp', '')}"
+
 
 def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) -> List[Dict[str, Any]]:
     """Fetch historical entries with duplicate detection"""
     all_entries: List[Dict[str, Any]] = []
     seen_entries = set()
-    
+
     try:
-        print(f"\nFetching historical food entries from {start_date} to {end_date}...")
-        historical_entries = api.get_historical_food_entries(start_date, end_date)
+        print(
+            f"\nFetching historical food entries from {start_date} to {end_date}...")
+        historical_entries = api.get_historical_food_entries(
+            start_date, end_date)
 
         if not historical_entries:
             print("⚠️ No historical entries received from API")
@@ -67,27 +74,31 @@ def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) ->
             if not daily_result:
                 continue
 
-            entries = daily_result.get("food_entries", {}).get("food_entry", [])
+            entries = daily_result.get(
+                "food_entries", {}).get("food_entry", [])
             if isinstance(entries, dict):
                 entries = [entries]
 
             for entry in entries:
                 if not entry.get("food_entry_id"):
                     continue
-                    
+
                 fingerprint = create_entry_fingerprint(entry)
                 if fingerprint not in seen_entries:
                     seen_entries.add(fingerprint)
                     all_entries.append(entry)
                 else:
-                    print(f"⚠️ Duplicate entry skipped: {entry['food_entry_name']} on {entry.get('date_int')}")
+                    print(
+                        f"⚠️ Duplicate entry skipped: {entry['food_entry_name']} on {entry.get('date_int')}")
 
-        print(f"\n✅ Retrieved {len(all_entries)} unique historical food entries.")
+        print(
+            f"\n✅ Retrieved {len(all_entries)} unique historical food entries.")
         return all_entries
 
     except Exception as e:
         print(f"⚠️ Error processing historical entries: {e}")
         return all_entries
+
 
 def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any]]):
     date_groups = defaultdict(list)
@@ -109,14 +120,14 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
 
     for date, new_entries in date_groups.items():
         redis_key = f"{REDIS_FOOD_ENTRIES_PREFIX}{date}"
-        
+
         existing_entries = []
         if redis_client.exists(redis_key):
             existing_entries = json.loads(redis_client.get(redis_key))
 
         existing_fingerprints = {
-            create_entry_fingerprint(e): e 
-            for e in existing_entries 
+            create_entry_fingerprint(e): e
+            for e in existing_entries
             if "food_entry_id" in e
         }
 
@@ -131,13 +142,14 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
         if entries_to_update:
             updated_entries = [
                 e for e in existing_entries
-                if create_entry_fingerprint(e) not in 
-                   {create_entry_fingerprint(ne) for ne in entries_to_update}
+                if create_entry_fingerprint(e) not in
+                {create_entry_fingerprint(ne) for ne in entries_to_update}
             ]
             updated_entries.extend(entries_to_update)
-            
+
             redis_client.set(redis_key, json.dumps(updated_entries))
-            redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date, str(new_entries[0]["date_int"]))
+            redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date,
+                              str(new_entries[0]["date_int"]))
             print(f"✅ Updated {len(entries_to_update)} entries for {date}")
         else:
             print(f"⏩ No changes needed for {date}")
@@ -146,6 +158,7 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
     print(f"Total entries processed: {len(entries)}")
     print(f"Entries available for loading: {loaded_count}")
     print(f"Entries skipped (invalid): {skipped_count}")
+
 
 def main():
     try:
@@ -189,6 +202,7 @@ def main():
     finally:
         if "redis_client" in locals():
             redis_client.close()
+
 
 if __name__ == "__main__":
     main()

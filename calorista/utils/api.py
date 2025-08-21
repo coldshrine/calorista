@@ -92,7 +92,8 @@ class FatSecretAPI:
             if params:
                 request_params.update(params)
 
-            request_params["oauth_signature"] = self._generate_signature(request_params)
+            request_params["oauth_signature"] = self._generate_signature(
+                request_params)
 
             response = requests.get(
                 self.base_url,

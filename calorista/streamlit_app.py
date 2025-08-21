@@ -53,7 +53,8 @@ def get_redis_connection():
         )
         st.stop()  # Stop the app if connection fails
     except Exception as e:
-        st.error(f"An unexpected error occurred while connecting to Redis: {e}")
+        st.error(
+            f"An unexpected error occurred while connecting to Redis: {e}")
         st.stop()
     return None
 
@@ -173,7 +174,8 @@ if not food_df.empty:
 
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Total Calories", f"{total_calories_latest:.0f} kcal")
+                st.metric("Total Calories",
+                          f"{total_calories_latest:.0f} kcal")
             with col2:
                 st.metric("Carbohydrates", f"{total_carbs_latest:.1f} g")
             with col3:
@@ -281,10 +283,12 @@ if not food_df.empty:
                 .reindex(date_range, fill_value=0)
                 .reset_index()
             )
-            daily_totals_filtered.rename(columns={"index": "date"}, inplace=True)
+            daily_totals_filtered.rename(
+                columns={"index": "date"}, inplace=True)
 
             st.subheader("Daily Calorie Intake Trend")
-            st.line_chart(daily_totals_filtered.set_index("date")["total_calories"])
+            st.line_chart(daily_totals_filtered.set_index(
+                "date")["total_calories"])
 
             st.subheader("Daily Macronutrient Intake Trend")
             st.line_chart(
@@ -294,20 +298,24 @@ if not food_df.empty:
             )
 
             st.subheader("Aggregated Macros for the Selected Period")
-            total_period_calories = daily_totals_filtered["total_calories"].sum()
-            total_period_carbs = daily_totals_filtered["total_carbohydrate"].sum()
+            total_period_calories = daily_totals_filtered["total_calories"].sum(
+            )
+            total_period_carbs = daily_totals_filtered["total_carbohydrate"].sum(
+            )
             total_period_fat = daily_totals_filtered["total_fat"].sum()
             total_period_protein = filtered_df["protein"].sum()
 
             col5, col6, col7, col8 = st.columns(4)
             with col5:
-                st.metric("Total Period Calories", f"{total_period_calories:.0f} kcal")
+                st.metric("Total Period Calories",
+                          f"{total_period_calories:.0f} kcal")
             with col6:
                 st.metric("Total Period Carbs", f"{total_period_carbs:.1f} g")
             with col7:
                 st.metric("Total Period Fat", f"{total_period_fat:.1f} g")
             with col8:
-                st.metric("Total Period Protein", f"{total_period_protein:.1f} g")
+                st.metric("Total Period Protein",
+                          f"{total_period_protein:.1f} g")
 
         else:
             st.info(
@@ -377,7 +385,8 @@ if not food_df.empty:
                 weekly_totals,
                 x="week_label",
                 y="total_calories",
-                labels={"total_calories": "Total Calories", "week_label": "Week"},
+                labels={"total_calories": "Total Calories",
+                        "week_label": "Week"},
                 color="total_calories",
                 color_continuous_scale="Bluered",
             )
@@ -412,7 +421,8 @@ if not food_df.empty:
             value_name="Amount (g)",
         )
         weekly_macros["Macronutrient"] = (
-            weekly_macros["Macronutrient"].str.replace("total_", "").str.capitalize()
+            weekly_macros["Macronutrient"].str.replace(
+                "total_", "").str.capitalize()
         )
 
         fig = px.bar(
@@ -439,13 +449,15 @@ if not food_df.empty:
             + weekly_totals["total_protein"]
         )
         weekly_totals["carb_ratio"] = (
-            weekly_totals["total_carbohydrate"] / weekly_totals["total_macros"] * 100
+            weekly_totals["total_carbohydrate"] /
+            weekly_totals["total_macros"] * 100
         )
         weekly_totals["fat_ratio"] = (
             weekly_totals["total_fat"] / weekly_totals["total_macros"] * 100
         )
         weekly_totals["protein_ratio"] = (
-            weekly_totals["total_protein"] / weekly_totals["total_macros"] * 100
+            weekly_totals["total_protein"] /
+            weekly_totals["total_macros"] * 100
         )
 
         ratio_df = weekly_totals.melt(
@@ -454,7 +466,8 @@ if not food_df.empty:
             var_name="Macro",
             value_name="Percentage",
         )
-        ratio_df["Macro"] = ratio_df["Macro"].str.replace("_ratio", "").str.capitalize()
+        ratio_df["Macro"] = ratio_df["Macro"].str.replace(
+            "_ratio", "").str.capitalize()
 
         fig = px.area(
             ratio_df,
@@ -506,7 +519,8 @@ st.header("🗓️ Monthly Aggregated Trends (All Historical Data)")
 if not food_df.empty:
     # Ensure 'date' is datetime and create 'month_start' as datetime
     food_df["date"] = pd.to_datetime(food_df["date"])
-    food_df["month_start"] = food_df["date"].dt.to_period("M").dt.to_timestamp()
+    food_df["month_start"] = food_df["date"].dt.to_period(
+        "M").dt.to_timestamp()
 
     # Create a readable month label
     food_df["month_label"] = food_df["month_start"].dt.strftime("%b %Y")
@@ -530,7 +544,8 @@ if not food_df.empty:
             monthly_totals["total_calories"] / monthly_totals["days_logged"]
         )
         monthly_totals["avg_daily_carbs"] = (
-            monthly_totals["total_carbohydrate"] / monthly_totals["days_logged"]
+            monthly_totals["total_carbohydrate"] /
+            monthly_totals["days_logged"]
         )
         monthly_totals["avg_daily_fat"] = (
             monthly_totals["total_fat"] / monthly_totals["days_logged"]
@@ -548,7 +563,8 @@ if not food_df.empty:
                 monthly_totals,
                 x="month_label",
                 y="total_calories",
-                labels={"total_calories": "Total Calories", "month_label": "Month"},
+                labels={"total_calories": "Total Calories",
+                        "month_label": "Month"},
                 color="total_calories",
                 color_continuous_scale="thermal",
             )
@@ -579,7 +595,8 @@ if not food_df.empty:
             value_name="Amount (g)",
         )
         monthly_macros["Macronutrient"] = (
-            monthly_macros["Macronutrient"].str.replace("total_", "").str.capitalize()
+            monthly_macros["Macronutrient"].str.replace(
+                "total_", "").str.capitalize()
         )
 
         fig = px.bar(

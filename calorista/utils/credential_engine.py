@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional
 import requests
 from dotenv import load_dotenv
 
+
 class CredentialEngine:
     def __init__(self, token_file: str):
         self.token_file = Path(token_file)
@@ -93,12 +94,14 @@ class CredentialEngine:
             "oauth_token": oauth_token,
             "oauth_verifier": oauth_verifier
         })
-        params["oauth_signature"] = self._generate_signature(url, params, oauth_token_secret)
+        params["oauth_signature"] = self._generate_signature(
+            url, params, oauth_token_secret)
 
         response = requests.get(url, params=params)
         if response.status_code == 200:
             return dict(pair.split("=") for pair in response.text.split("&"))
         raise Exception(f"Failed to get access token: {response.text}")
+
 
 def get_browser_url() -> Optional[str]:
     """Get current URL from browser on macOS"""
@@ -110,10 +113,11 @@ def get_browser_url() -> Optional[str]:
             end if
         end tell
         '''
-        chrome_url = subprocess.check_output(["osascript", "-e", script]).decode("utf-8").strip()
+        chrome_url = subprocess.check_output(
+            ["osascript", "-e", script]).decode("utf-8").strip()
         if chrome_url:
             return chrome_url
-        
+
         script = '''
         tell application "Safari"
             return URL of current tab of first window
@@ -124,47 +128,51 @@ def get_browser_url() -> Optional[str]:
         print(f"Browser URL detection failed: {e}")
         return None
 
+
 def main():
     # Load environment variables first
     env_path = Path(__file__).parent.parent / ".env"
     print(f"Loading .env from: {env_path}")
-    
+
     if not env_path.exists():
         print(f"Error: .env file not found at {env_path}")
         print("Please create the file with CONSUMER_KEY and CONSUMER_SECRET")
         exit(1)
-    
+
     load_dotenv(env_path, override=True)
-    
+
     # Debug: Print loaded environment variables
     print("Loaded environment variables:")
-    print(f"CONSUMER_KEY: {'****' if os.getenv('CONSUMER_KEY') else 'NOT SET'}")
-    print(f"CONSUMER_SECRET: {'****' if os.getenv('CONSUMER_SECRET') else 'NOT SET'}")
+    print(
+        f"CONSUMER_KEY: {'****' if os.getenv('CONSUMER_KEY') else 'NOT SET'}")
+    print(
+        f"CONSUMER_SECRET: {'****' if os.getenv('CONSUMER_SECRET') else 'NOT SET'}")
     print(f"CALLBACK_URL: {os.getenv('CALLBACK_URL')}")
-    
+
     # Verify required environment variables
     if not os.getenv("CONSUMER_KEY") or not os.getenv("CONSUMER_SECRET"):
         print("Error: CONSUMER_KEY and CONSUMER_SECRET must be set in .env file")
         print("Please check your .env file and try again")
         exit(1)
-    
+
     # Configuration
-    TOKEN_PATH = Path(__file__).parent.parent.parent / "auth_tokens" / "tokens.json"
-    
+    TOKEN_PATH = Path(__file__).parent.parent.parent / \
+        "auth_tokens" / "tokens.json"
+
     # Initialize auth
     auth = CredentialEngine(str(TOKEN_PATH))
-    
+
     try:
         # Step 1: Get request token
         print("\n1. Getting request token...")
         token_data = auth.get_request_token()
-        
+
         # Step 2: Authorize in browser
         print("\n2. Opening browser for authorization...")
         auth_url = f"https://authentication.fatsecret.com/oauth/authorize?oauth_token={token_data['oauth_token']}"
         print(f"Please visit: {auth_url}")
         webbrowser.open(auth_url)
-        
+
         # Step 3: Wait for callback
         print("\n3. Waiting for authorization... (30 second timeout)")
         callback_url = None
@@ -174,7 +182,7 @@ def main():
             if current_url and "oauth.pstmn.io/v1/callback" in current_url:
                 callback_url = current_url
                 break
-        
+
         if callback_url:
             # Extract tokens from callback URL
             print("\nCallback URL detected!")
@@ -192,7 +200,7 @@ def main():
             print("1. Complete authorization in browser")
             print("2. Copy the FULL callback URL (from address bar)")
             print("3. Paste it below\n")
-            
+
             while True:
                 callback_url = input("Paste callback URL: ").strip()
                 if "oauth_token" in callback_url and "oauth_verifier" in callback_url:
@@ -206,9 +214,10 @@ def main():
                     auth.save_tokens(access_data)
                     break
                 print("Invalid URL. Must contain oauth_token and oauth_verifier")
-    
+
     except Exception as e:
         print(f"\nAuthentication failed: {str(e)}")
+
 
 if __name__ == "__main__":
     main()
