@@ -3,7 +3,8 @@ from prefect.client.schemas.schedules import CronSchedule
 from calorista.flow import calorista_flow
 
 REPO = "https://github.com/coldshrine/calorista.git"
-ENTRYPOINT = "calorista.flow:calorista_flow"
+ENTRYPOINT = "calorista/flow.py:calorista_flow"
+
 
 
 if __name__ == "__main__":
