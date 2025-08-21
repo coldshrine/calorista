@@ -1,0 +1,54 @@
+name: Sync Calorista Data Hourly
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Run at minute 0 of every hour
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  sync-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        cache: 'poetry'
+        
+    - name: Install Poetry
+      run: |
+        pip install poetry
+        poetry --version
+        
+    - name: Install dependencies
+      run: poetry install --no-root
+      
+    - name: Create environment file
+      run: |
+        cat > .env << EOF
+        CONSUMER_KEY=${{ secrets.CONSUMER_KEY }}
+        CONSUMER_SECRET=${{ secrets.CONSUMER_SECRET }}
+        CALLBACK_URL=${{ secrets.CALLBACK_URL }}
+        OAUTH_SIGNATURE_METHOD=${{ secrets.OAUTH_SIGNATURE_METHOD }}
+        OAUTH_VERSION=${{ secrets.OAUTH_VERSION }}
+        REDIS_URL=${{ secrets.REDIS_URL }}
+        EOF
+        
+    - name: Create auth tokens file
+      run: |
+        mkdir -p auth_tokens
+        cat > auth_tokens/tokens.json << EOF
+        {
+          "oauth_token": "${{ secrets.OAUTH_TOKEN }}",
+          "oauth_token_secret": "${{ secrets.OAUTH_TOKEN_SECRET }}"
+        }
+        EOF
+        
+    - name: Run Calorista sync script
+      run: |
+        poetry run python calorista/main.py
