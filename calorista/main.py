@@ -61,10 +61,8 @@ def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) ->
     seen_entries = set()
 
     try:
-        print(
-            f"\nFetching historical food entries from {start_date} to {end_date}...")
-        historical_entries = api.get_historical_food_entries(
-            start_date, end_date)
+        print(f"\nFetching historical food entries from {start_date} to {end_date}...")
+        historical_entries = api.get_historical_food_entries(start_date, end_date)
 
         if not historical_entries:
             print("⚠️ No historical entries received from API")
@@ -74,8 +72,7 @@ def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) ->
             if not daily_result:
                 continue
 
-            entries = daily_result.get(
-                "food_entries", {}).get("food_entry", [])
+            entries = daily_result.get("food_entries", {}).get("food_entry", [])
             if isinstance(entries, dict):
                 entries = [entries]
 
@@ -88,11 +85,9 @@ def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) ->
                     seen_entries.add(fingerprint)
                     all_entries.append(entry)
                 else:
-                    print(
-                        f"⚠️ Duplicate entry skipped: {entry['food_entry_name']} on {entry.get('date_int')}")
+                    print(f"⚠️ Duplicate entry skipped: {entry['food_entry_name']} on {entry.get('date_int')}")
 
-        print(
-            f"\n✅ Retrieved {len(all_entries)} unique historical food entries.")
+        print(f"\n✅ Retrieved {len(all_entries)} unique historical food entries.")
         return all_entries
 
     except Exception as e:
@@ -126,8 +121,8 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
             existing_entries = json.loads(redis_client.get(redis_key))
 
         existing_fingerprints = {
-            create_entry_fingerprint(e): e
-            for e in existing_entries
+            create_entry_fingerprint(e): e 
+            for e in existing_entries 
             if "food_entry_id" in e
         }
 
@@ -142,14 +137,13 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
         if entries_to_update:
             updated_entries = [
                 e for e in existing_entries
-                if create_entry_fingerprint(e) not in
-                {create_entry_fingerprint(ne) for ne in entries_to_update}
+                if create_entry_fingerprint(e) not in 
+                   {create_entry_fingerprint(ne) for ne in entries_to_update}
             ]
             updated_entries.extend(entries_to_update)
-
+            
             redis_client.set(redis_key, json.dumps(updated_entries))
-            redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date,
-                              str(new_entries[0]["date_int"]))
+            redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date, str(new_entries[0]["date_int"]))
             print(f"✅ Updated {len(entries_to_update)} entries for {date}")
         else:
             print(f"⏩ No changes needed for {date}")
@@ -162,40 +156,11 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
 
 def main():
     try:
-        # Get the correct base directory (where the script is located)
-        SCRIPT_DIR = Path(__file__).resolve().parent
-        BASE_DIR = SCRIPT_DIR.parent  # Go up one level to project root
-        
-        print(f"Script directory: {SCRIPT_DIR}")
-        print(f"Base directory: {BASE_DIR}")
-        
-        # Check if we're in the right location
-        print("Current working directory:", os.getcwd())
-        print("Contents of current directory:", os.listdir('.'))
-        
+        BASE_DIR = Path(__file__).resolve().parent.parent
         token_file = BASE_DIR / "auth_tokens" / "tokens.json"
-        print(f"Looking for token file at: {token_file}")
-        
         if not token_file.exists():
             print(f"❌ Token file not found at: {token_file}")
-            # Debug: list the auth_tokens directory if it exists
-            auth_tokens_dir = BASE_DIR / "auth_tokens"
-            if auth_tokens_dir.exists():
-                print(f"Auth tokens directory exists, contents: {os.listdir(auth_tokens_dir)}")
-            else:
-                print("Auth tokens directory does not exist")
             return
-            
-        # Load environment variables from project root
-        env_path = BASE_DIR / ".env"
-        if env_path.exists():
-            load_dotenv(dotenv_path=env_path)
-            print("✅ .env file loaded successfully")
-        else:
-            print(f"⚠️ .env file not found at: {env_path}")
-            # Try to load from current directory as fallback
-            load_dotenv()
-            print("Tried loading .env from current directory")
             
         auth = FatSecretAuth(token_file=str(token_file))
         api = FatSecretAPI(auth)
@@ -218,7 +183,6 @@ def main():
 
         if not REDIS_URL:
             print("❌ REDIS_URL environment variable not found")
-            print("Available environment variables:", [k for k in os.environ.keys() if 'REDIS' in k or 'redis' in k])
             return
 
         print("🔌 Connecting to Redis...")
@@ -230,11 +194,10 @@ def main():
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
     finally:
         if "redis_client" in locals():
             redis_client.close()
+
 
 if __name__ == "__main__":
     main()
