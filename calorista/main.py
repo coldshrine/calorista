@@ -162,11 +162,41 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
 
 def main():
     try:
-        BASE_DIR = Path(__file__).resolve().parent.parent
+        # Get the correct base directory (where the script is located)
+        SCRIPT_DIR = Path(__file__).resolve().parent
+        BASE_DIR = SCRIPT_DIR.parent  # Go up one level to project root
+        
+        print(f"Script directory: {SCRIPT_DIR}")
+        print(f"Base directory: {BASE_DIR}")
+        
+        # Check if we're in the right location
+        print("Current working directory:", os.getcwd())
+        print("Contents of current directory:", os.listdir('.'))
+        
         token_file = BASE_DIR / "auth_tokens" / "tokens.json"
+        print(f"Looking for token file at: {token_file}")
+        
         if not token_file.exists():
             print(f"❌ Token file not found at: {token_file}")
+            # Debug: list the auth_tokens directory if it exists
+            auth_tokens_dir = BASE_DIR / "auth_tokens"
+            if auth_tokens_dir.exists():
+                print(f"Auth tokens directory exists, contents: {os.listdir(auth_tokens_dir)}")
+            else:
+                print("Auth tokens directory does not exist")
             return
+            
+        # Load environment variables from project root
+        env_path = BASE_DIR / ".env"
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
+            print("✅ .env file loaded successfully")
+        else:
+            print(f"⚠️ .env file not found at: {env_path}")
+            # Try to load from current directory as fallback
+            load_dotenv()
+            print("Tried loading .env from current directory")
+            
         auth = FatSecretAuth(token_file=str(token_file))
         api = FatSecretAPI(auth)
 
@@ -188,6 +218,7 @@ def main():
 
         if not REDIS_URL:
             print("❌ REDIS_URL environment variable not found")
+            print("Available environment variables:", [k for k in os.environ.keys() if 'REDIS' in k or 'redis' in k])
             return
 
         print("🔌 Connecting to Redis...")
@@ -199,10 +230,11 @@ def main():
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
     finally:
         if "redis_client" in locals():
             redis_client.close()
-
 
 if __name__ == "__main__":
     main()

@@ -2,8 +2,8 @@ name: Sync Calorista Data Hourly
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Run at minute 0 of every hour
-  workflow_dispatch:  # Allow manual triggering
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   sync-data:
@@ -25,14 +25,14 @@ jobs:
         version: latest
         virtualenvs-create: true
         virtualenvs-in-project: true
-        installer-parallel: true
         
     - name: Install dependencies
       run: |
         poetry install --no-interaction --no-root
         
-    - name: Create environment file
+    - name: Create environment file in project root
       run: |
+        # Create .env in the current directory (project root)
         cat > .env << EOF
         CONSUMER_KEY=${{ secrets.CONSUMER_KEY }}
         CONSUMER_SECRET=${{ secrets.CONSUMER_SECRET }}
@@ -42,8 +42,9 @@ jobs:
         REDIS_URL=${{ secrets.REDIS_URL }}
         EOF
         
-    - name: Create auth tokens file
+    - name: Create auth tokens directory and file
       run: |
+        # Create auth_tokens in project root
         mkdir -p auth_tokens
         cat > auth_tokens/tokens.json << EOF
         {
@@ -51,6 +52,16 @@ jobs:
           "oauth_token_secret": "${{ secrets.OAUTH_TOKEN_SECRET }}"
         }
         EOF
+        
+    - name: Verify files are created correctly
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        echo "Auth tokens directory:"
+        ls -la auth_tokens/
+        echo ".env file content (redacted):"
+        cat .env | sed 's/=.*/=***/'
         
     - name: Run Calorista sync script
       run: |
