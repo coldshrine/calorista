@@ -36,7 +36,6 @@ class Config:
 # --- Streamlit UI Configuration ---
 st.set_page_config(layout=Config.PAGE_LAYOUT, page_title=Config.PAGE_TITLE)
 
-# Load environment variables
 load_dotenv()
 
 
@@ -155,7 +154,6 @@ def load_and_process_data(_redis_client):
     if not all_food_entries:
         return pd.DataFrame()
 
-    # Convert to DataFrame and process
     df = pd.DataFrame(all_food_entries)
     df = DataProcessor.process_numeric_columns(df)
     df["date"] = pd.to_datetime(df["date"]).dt.date
@@ -232,7 +230,6 @@ class AppSections:
             st.info("No data available for the latest day.")
             return
             
-        # Get the latest date
         sorted_dates = sorted(self.food_df["date"].unique(), reverse=True)
         latest_date = sorted_dates[0] if sorted_dates else None
         
@@ -242,23 +239,19 @@ class AppSections:
             
         st.subheader(f"{latest_date.strftime('%Y-%m-%d')}")
         
-        # Filter data for the latest day
         latest_day_df = self.food_df[self.food_df["date"] == latest_date]
         
         if latest_day_df.empty:
             st.info(f"No entries for the latest day: {latest_date.strftime('%Y-%m-%d')}.")
             return
             
-        # Calculate totals
         total_calories = latest_day_df["calories"].sum()
         total_carbs = latest_day_df["carbohydrate"].sum()
         total_fat = latest_day_df["fat"].sum()
         total_protein = latest_day_df["protein"].sum()
         
-        # Display metrics
         VisualizationComponents.display_metrics_row(total_calories, total_carbs, total_fat, total_protein)
-        
-        # Macronutrient distribution
+
         st.subheader("Macronutrient Distribution (Latest Day)")
         macros_data = pd.DataFrame({
             "Nutrient": Config.MACRO_NUTRIENTS,
@@ -266,7 +259,6 @@ class AppSections:
         })
         st.bar_chart(macros_data.set_index("Nutrient"))
         
-        # Detailed entries
         st.subheader("Detailed Food Entries (Latest Day)")
         st.dataframe(
             latest_day_df[Config.DISPLAY_COLS].sort_values(by="meal")
@@ -280,13 +272,11 @@ class AppSections:
             st.info("No data available for date range selection.")
             return
             
-        # Get date bounds
         min_date = min(self.food_df["date"])
         max_date = max(self.food_df["date"])
         
         st.write(f"Data available from **{min_date.strftime('%Y-%m-%d')}** to **{max_date.strftime('%Y-%m-%d')}**")
         
-        # Date selection
         default_start = max(min_date, max_date - timedelta(days=6))
         
         col_start, col_end = st.columns(2)
@@ -307,14 +297,12 @@ class AppSections:
                 key="end_date_picker",
             )
         
-        # Validate date range
         if start_date > end_date:
             st.error("Error: Start date cannot be after end date. Please adjust your selection.")
             return
             
         st.write(f"Displaying data from **{start_date.strftime('%Y-%m-%d')}** to **{end_date.strftime('%Y-%m-%d')}**")
         
-        # Filter data
         filtered_df = self.food_df[
             (self.food_df["date"] >= start_date) & 
             (self.food_df["date"] <= end_date)
@@ -324,7 +312,6 @@ class AppSections:
             st.info(f"No entries found for the selected date range.")
             return
             
-        # Calculate daily totals
         daily_totals = (
             filtered_df.groupby("date")
             .agg(
@@ -336,7 +323,6 @@ class AppSections:
             .reset_index()
         )
         
-        # Ensure all dates in range are represented
         date_range = pd.date_range(start=start_date, end=end_date, freq="D").date
         daily_totals = (
             daily_totals.set_index("date")
@@ -344,8 +330,7 @@ class AppSections:
             .reset_index()
             .rename(columns={"index": "date"})
         )
-        
-        # Display charts
+
         st.subheader("Daily Calorie Intake Trend")
         st.line_chart(daily_totals.set_index("date")["total_calories"])
         
@@ -356,7 +341,6 @@ class AppSections:
             ]
         )
         
-        # Period totals
         st.subheader("Aggregated Macros for the Selected Period")
         total_calories = daily_totals["total_calories"].sum()
         total_carbs = daily_totals["total_carbohydrate"].sum()
@@ -373,7 +357,6 @@ class AppSections:
             st.info("No data available to calculate weekly trends.")
             return
             
-        # Prepare weekly data
         self.food_df["year"] = self.food_df["date"].apply(lambda x: x.isocalendar()[0])
         self.food_df["week"] = self.food_df["date"].apply(lambda x: x.isocalendar()[1])
         
@@ -395,12 +378,10 @@ class AppSections:
             st.info("No weekly data to display.")
             return
             
-        # Create week labels
         weekly_totals["week_label"] = weekly_totals.apply(
             lambda x: f"Week {x['week']} ({x['week_start'].strftime('%b %d')})", axis=1
         )
         
-        # Calculate daily averages
         numeric_cols = ["total_calories", "total_carbohydrate", "total_fat", "total_protein"]
         weekly_totals[numeric_cols] = weekly_totals[numeric_cols].apply(pd.to_numeric, errors="coerce")
         
@@ -409,7 +390,6 @@ class AppSections:
         weekly_totals["avg_daily_fat"] = weekly_totals["total_fat"] / weekly_totals["days_logged"]
         weekly_totals["avg_daily_protein"] = weekly_totals["total_protein"] / weekly_totals["days_logged"]
         
-        # Weekly Calorie Intake
         st.subheader("Weekly Calorie Intake")
         col1, col2 = st.columns(2)
         
@@ -436,7 +416,6 @@ class AppSections:
             fig.update_traces(line=dict(color="royalblue", width=3))
             st.plotly_chart(fig, use_container_width=True)
         
-        # Weekly Macros
         st.subheader("Weekly Macronutrient Distribution")
         
         weekly_macros = weekly_totals.melt(
@@ -452,7 +431,6 @@ class AppSections:
         )
         st.plotly_chart(fig, use_container_width=True)
         
-        # Weekly Macro Ratios
         st.subheader("Weekly Macronutrient Ratios")
         weekly_totals["total_macros"] = (
             weekly_totals["total_carbohydrate"] + 
@@ -485,7 +463,6 @@ class AppSections:
         fig.update_layout(xaxis_tickangle=-45)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Data table
         st.subheader("Weekly Summary Data")
         display_cols = [
             "week_label", "total_calories", "avg_daily_calories",
@@ -515,7 +492,6 @@ class AppSections:
             st.info("No data available to calculate monthly trends.")
             return
             
-        # Prepare monthly data
         self.food_df["date"] = pd.to_datetime(self.food_df["date"])
         self.food_df["month_start"] = self.food_df["date"].dt.to_period("M").dt.to_timestamp()
         self.food_df["month_label"] = self.food_df["month_start"].dt.strftime("%b %Y")
@@ -537,13 +513,11 @@ class AppSections:
             st.info("No monthly data to display.")
             return
             
-        # Calculate daily averages
         monthly_totals["avg_daily_calories"] = monthly_totals["total_calories"] / monthly_totals["days_logged"]
         monthly_totals["avg_daily_carbs"] = monthly_totals["total_carbohydrate"] / monthly_totals["days_logged"]
         monthly_totals["avg_daily_fat"] = monthly_totals["total_fat"] / monthly_totals["days_logged"]
         monthly_totals["avg_daily_protein"] = monthly_totals["total_protein"] / monthly_totals["days_logged"]
         
-        # Monthly Calorie Intake
         st.subheader("Monthly Calorie Intake")
         col1, col2 = st.columns(2)
         
@@ -569,7 +543,6 @@ class AppSections:
             fig.update_traces(line=dict(color="firebrick", width=3))
             st.plotly_chart(fig, use_container_width=True)
         
-        # Monthly Macros
         st.subheader("Monthly Macronutrient Distribution")
         
         monthly_macros = monthly_totals.melt(
@@ -585,7 +558,6 @@ class AppSections:
         )
         st.plotly_chart(fig, use_container_width=True)
         
-        # Data table
         st.subheader("Monthly Summary Data")
         display_cols = [
             "month_label", "total_calories", "avg_daily_calories",
@@ -613,16 +585,11 @@ def main():
     """Main application function"""
     st.title("🍽️ Calorista Food Logging Infographics")
     
-    # Initialize Redis connection
     redis_client = RedisConnection.get_connection()
     
-    # Load and process data
     food_df = load_and_process_data(redis_client)
-    
-    # Initialize app sections
     app_sections = AppSections(food_df)
     
-    # Render application sections
     app_sections.render_latest_day_section()
     app_sections.render_date_range_section()
     app_sections.render_weekly_trends_section()
