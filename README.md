@@ -8,11 +8,11 @@ https://calorista.streamlit.app/
 
 ![Calorista Icon](./icon.jpg)
 
-ETL pipeline for authenticated FatSecret users that extracts real-time food log data, transforms raw entries with detailed nutritional metadata.
+ETL pipeline for authenticated fatsecret users that extracts real-time food log data, transforms raw entries with detailed nutritional metadata.
 
 ## 🔑 API Access
 
-To use this project, you must [register your application with FatSecret](https://platform.fatsecret.com/api/Default.aspx?screen=rapiintro) and obtain your own **API Key** and **API Secret**. This is required to authenticate users and access their food log data via the FatSecret Platform API.
+To use this project, you must [register your application with FatSecret](https://platform.fatsecret.com/api/Default.aspx?screen=rapiintro) and obtain your own **API Key** and **API Secret**. This is required to authenticate users and access their food log data via the fatsecret Platform API.
 
 Please remember that you need to also whitelist your IP inside your personal account settings.
 
@@ -23,7 +23,7 @@ now it's just stacked appending any entries added.
 
 Create a .env file in the project root:
 
-[FatSecret API Configuration (Get these from https://platform.fatsecret.com)](https://platform.fatsecret.com)
+[fatsecret API Configuration (Get these from https://platform.fatsecret.com)](https://platform.fatsecret.com)
 
 ```
 CONSUMER_KEY=your_fatsecret_consumer_key
@@ -34,6 +34,7 @@ OAUTH_VERSION="1.0"
 
 REDIS_URL=your_redis_url
 ```
+For a deeper dive, familiarize yourself with [fatsecret API docs](https://platform.fatsecret.com/docs/guides/authentication/oauth1/three-legged)
 
 ## 🔄 How It Works
 
@@ -62,8 +63,6 @@ REDIS_URL=your_redis_url
 - Advanced analytics and trends  
 - Export functionality for data (CSV, JSON, PDF)  
 - Mobile-responsive design
-
----
 
 ## 📊 Data Flow
 1. **Extract** → OAuth authentication → FatSecret API calls  
