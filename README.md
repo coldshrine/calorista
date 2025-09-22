@@ -33,7 +33,6 @@ OAUTH_SIGNATURE_METHOD="HMAC-SHA1"
 OAUTH_VERSION="1.0"
 
 REDIS_URL=your_redis_url
-
 ```
 
 ## 🔄 How It Works
