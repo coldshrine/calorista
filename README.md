@@ -1,5 +1,7 @@
 # calorista
 
+Extracts food logs from the FatSecret API for authenticated users, cleans and deduplicates entries, transforms them into structured nutritional records, and loads them into Redis for fast, low-latency access. The data is then visualized in a Streamlit dashboard, providing real-time insights, macro tracking, and historical trends.
+
 Demo:
 
 https://calorista.streamlit.app/
@@ -16,3 +18,53 @@ Please remember that you need to also whitelist your IP inside your personal acc
 
 things to improve - if food entry was deleted/adjusted catch the change and display correct entries on the redis side.
 now it's just stacked appending any entries added.
+
+## Environment Setup
+
+Create a .env file in the project root:
+
+[FatSecret API Configuration (Get these from https://platform.fatsecret.com)](https://platform.fatsecret.com)
+
+```
+CONSUMER_KEY=your_fatsecret_consumer_key_here
+CONSUMER_SECRET=your_fatsecret_consumer_secret_here
+CALLBACK_URL=your_oauth_callback_url_here
+OAUTH_SIGNATURE_METHOD=HMAC-SHA1
+OAUTH_VERSION=1.0
+```
+
+## 🔄 How It Works
+
+### Main Script (`main.py`)
+- **Authentication** → Handles OAuth flow with FatSecret API  
+- **Data Sync** → Fetches historical food entries from a specified start date  
+- **Duplicate Detection** → Uses entry fingerprints to avoid duplicates  
+- **Redis Storage** → Stores data with date-based keys (`food_entries:YYYY-MM-DD`)  
+- **Incremental Updates** → Only updates changed or new entries
+
+### Streamlit Dashboard (`streamlit_app.py`)
+- **Real-time Analytics** → Displays current nutritional data  
+- **Weight Tracking** → Shows user weight progression  
+- **Interactive Interface** → Date-based filtering and visualization  
+- **Macro Breakdown** → Detailed nutritional information display
+
+## 🔧 Planned Improvements
+
+### Orchestration System
+- Automated scheduled syncs (e.g., every 30 minutes)  
+- Retry mechanisms for failed API calls  
+- Health monitoring and alerts
+
+### Enhanced Features
+- Real-time webhook integration  
+- Advanced analytics and trends  
+- Export functionality for data (CSV, JSON, PDF)  
+- Mobile-responsive design
+
+---
+
+## 📊 Data Flow
+1. **Extract** → OAuth authentication → FatSecret API calls  
+2. **Transform** → Deduplication → Date formatting → Nutritional enrichment  
+3. **Load** → Redis storage with optimized key structure  
+4. **Visualize** → Streamlit dashboard with interactive charts
