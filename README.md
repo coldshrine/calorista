@@ -26,11 +26,14 @@ Create a .env file in the project root:
 [FatSecret API Configuration (Get these from https://platform.fatsecret.com)](https://platform.fatsecret.com)
 
 ```
-CONSUMER_KEY=your_fatsecret_consumer_key_here
-CONSUMER_SECRET=your_fatsecret_consumer_secret_here
-CALLBACK_URL=your_oauth_callback_url_here
-OAUTH_SIGNATURE_METHOD=HMAC-SHA1
-OAUTH_VERSION=1.0
+CONSUMER_KEY=your_fatsecret_consumer_key
+CONSUMER_SECRET=your_fatsecret_consumer_secret
+CALLBACK_URL="https://oauth.pstmn.io/v1/callback"
+OAUTH_SIGNATURE_METHOD="HMAC-SHA1"
+OAUTH_VERSION="1.0"
+
+REDIS_URL=your_redis_url
+
 ```
 
 ## 🔄 How It Works
