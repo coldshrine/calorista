@@ -521,11 +521,12 @@ class AppSections:
             st.info("No monthly data to display.")
             return
             
-        monthly_totals["avg_daily_calories"] = monthly_totals["total_calories"] / monthly_totals["days_logged"]
-        monthly_totals["avg_daily_carbs"] = monthly_totals["total_carbohydrate"] / monthly_totals["days_logged"]
-        monthly_totals["avg_daily_fat"] = monthly_totals["total_fat"] / monthly_totals["days_logged"]
-        monthly_totals["avg_daily_protein"] = monthly_totals["total_protein"] / monthly_totals["days_logged"]
-        
+        monthly_totals["days_in_month"] = monthly_totals["month_start"].dt.days_in_month
+        monthly_totals["avg_daily_calories"] = monthly_totals["total_calories"] / monthly_totals["days_in_month"]
+        monthly_totals["avg_daily_carbs"] = monthly_totals["total_carbohydrate"] / monthly_totals["days_in_month"]
+        monthly_totals["avg_daily_fat"] = monthly_totals["total_fat"] / monthly_totals["days_in_month"]
+        monthly_totals["avg_daily_protein"] = monthly_totals["total_protein"] / monthly_totals["days_in_month"]
+
         st.subheader("Monthly Calorie Intake")
         col1, col2 = st.columns(2)
         
