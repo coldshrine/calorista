@@ -326,10 +326,11 @@ class AppSections:
         date_range = pd.date_range(start=start_date, end=end_date, freq="D").date
         daily_totals = (
             daily_totals.set_index("date")
-            .reindex(date_range, fill_value=0)
+            .reindex(date_range)  # no fill_value → keeps NaN
             .reset_index()
             .rename(columns={"index": "date"})
         )
+
 
         st.subheader("Daily Calorie Intake Trend")
         st.line_chart(daily_totals.set_index("date")["total_calories"])
@@ -342,10 +343,17 @@ class AppSections:
         )
         
         st.subheader("Aggregated Macros for the Selected Period")
-        total_calories = daily_totals["total_calories"].sum()
-        total_carbs = daily_totals["total_carbohydrate"].sum()
-        total_fat = daily_totals["total_fat"].sum()
-        total_protein = daily_totals["total_protein"].sum()
+
+        total_calories = daily_totals["total_calories"].sum(skipna=True)
+        total_carbs = daily_totals["total_carbohydrate"].sum(skipna=True)
+        total_fat = daily_totals["total_fat"].sum(skipna=True)
+        total_protein = daily_totals["total_protein"].sum(skipna=True)
+
+        days_in_range = len(date_range)
+        avg_daily_carbs = total_carbs / days_in_range
+        avg_daily_fat = total_fat / days_in_range
+        avg_daily_protein = total_protein / days_in_range
+
         
         VisualizationComponents.display_metrics_row(total_calories, total_carbs, total_fat, total_protein)
     
@@ -385,11 +393,11 @@ class AppSections:
         numeric_cols = ["total_calories", "total_carbohydrate", "total_fat", "total_protein"]
         weekly_totals[numeric_cols] = weekly_totals[numeric_cols].apply(pd.to_numeric, errors="coerce")
         
-        weekly_totals["avg_daily_calories"] = weekly_totals["total_calories"] / weekly_totals["days_logged"]
-        weekly_totals["avg_daily_carbs"] = weekly_totals["total_carbohydrate"] / weekly_totals["days_logged"]
-        weekly_totals["avg_daily_fat"] = weekly_totals["total_fat"] / weekly_totals["days_logged"]
-        weekly_totals["avg_daily_protein"] = weekly_totals["total_protein"] / weekly_totals["days_logged"]
-        
+        weekly_totals["avg_daily_calories"] = weekly_totals["total_calories"] / 7
+        weekly_totals["avg_daily_carbs"] = weekly_totals["total_carbohydrate"] / 7
+        weekly_totals["avg_daily_fat"] = weekly_totals["total_fat"] / 7
+        weekly_totals["avg_daily_protein"] = weekly_totals["total_protein"] / 7
+
         st.subheader("Weekly Calorie Intake")
         col1, col2 = st.columns(2)
         
