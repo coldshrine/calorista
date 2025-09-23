@@ -56,7 +56,7 @@ def create_entry_fingerprint(entry: dict) -> str:
 
 
 def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) -> List[Dict[str, Any]]:
-    """Fetch historical entries with duplicate detection"""
+    """Fetch historical entries with duplicate detection, safely handling skipped days"""
     all_entries: List[Dict[str, Any]] = []
     seen_entries = set()
 
@@ -69,14 +69,22 @@ def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) ->
             return all_entries
 
         for daily_result in historical_entries:
-            if not daily_result:
+            # Handle None or unexpected structures
+            if not daily_result or not isinstance(daily_result, dict):
                 continue
 
-            entries = daily_result.get("food_entries", {}).get("food_entry", [])
+            food_entries_container = daily_result.get("food_entries")
+            if not food_entries_container:
+                # This is a valid "empty day" → just continue
+                continue
+
+            entries = food_entries_container.get("food_entry", [])
             if isinstance(entries, dict):
                 entries = [entries]
 
             for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
                 if not entry.get("food_entry_id"):
                     continue
 
@@ -85,7 +93,10 @@ def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) ->
                     seen_entries.add(fingerprint)
                     all_entries.append(entry)
                 else:
-                    print(f"⚠️ Duplicate entry skipped: {entry['food_entry_name']} on {entry.get('date_int')}")
+                    print(
+                        f"⚠️ Duplicate entry skipped: "
+                        f"{entry.get('food_entry_name', 'unknown')} on {entry.get('date_int')}"
+                    )
 
         print(f"\n✅ Retrieved {len(all_entries)} unique historical food entries.")
         return all_entries
