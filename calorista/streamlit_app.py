@@ -326,24 +326,42 @@ class AppSections:
         date_range = pd.date_range(start=start_date, end=end_date, freq="D").date
         daily_totals = (
             daily_totals.set_index("date")
-            .reindex(date_range)  # no fill_value → keeps NaN
+            .reindex(date_range)  # keep NaN for missing days
             .reset_index()
             .rename(columns={"index": "date"})
         )
 
-
+        # ✅ Daily Calorie Intake Trend (Plotly)
         st.subheader("Daily Calorie Intake Trend")
-        st.line_chart(daily_totals.set_index("date")["total_calories"])
-        
-        st.subheader("Daily Macronutrient Intake Trend")
-        st.line_chart(
-            daily_totals.set_index("date")[
-                ["total_carbohydrate", "total_fat", "total_protein"]
-            ]
+        fig = px.line(
+            daily_totals,
+            x="date",
+            y="total_calories",
+            markers=True,
+            title="Daily Calorie Intake Trend"
         )
-        
-        st.subheader("Aggregated Macros for the Selected Period")
+        st.plotly_chart(fig, use_container_width=True)
 
+        # ✅ Daily Macronutrient Intake Trend (Plotly)
+        st.subheader("Daily Macronutrient Intake Trend")
+        daily_macros = daily_totals.melt(
+            id_vars="date",
+            value_vars=["total_carbohydrate", "total_fat", "total_protein"],
+            var_name="Macronutrient",
+            value_name="Amount (g)"
+        )
+        fig = px.line(
+            daily_macros,
+            x="date",
+            y="Amount (g)",
+            color="Macronutrient",
+            markers=True,
+            title="Daily Macronutrient Intake Trend"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Aggregated Macros
+        st.subheader("Aggregated Macros for the Selected Period")
         total_calories = daily_totals["total_calories"].sum(skipna=True)
         total_carbs = daily_totals["total_carbohydrate"].sum(skipna=True)
         total_fat = daily_totals["total_fat"].sum(skipna=True)
@@ -354,9 +372,10 @@ class AppSections:
         avg_daily_fat = total_fat / days_in_range
         avg_daily_protein = total_protein / days_in_range
 
-        
-        VisualizationComponents.display_metrics_row(total_calories, total_carbs, total_fat, total_protein)
-    
+        VisualizationComponents.display_metrics_row(
+            total_calories, total_carbs, total_fat, total_protein
+        )
+
     def render_weekly_trends_section(self):
         """Renders the weekly trends section"""
         st.header("📈 Weekly Aggregated Trends (All Historical Data)")
