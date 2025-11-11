@@ -137,8 +137,8 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
             existing_entries = json.loads(redis_client.get(redis_key))
 
         existing_fingerprints = {
-            create_entry_fingerprint(e): e 
-            for e in existing_entries 
+            create_entry_fingerprint(e): e
+            for e in existing_entries
             if "food_entry_id" in e
         }
 
@@ -153,11 +153,10 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
         if entries_to_update:
             updated_entries = [
                 e for e in existing_entries
-                if create_entry_fingerprint(e) not in 
+                if create_entry_fingerprint(e) not in
                    {create_entry_fingerprint(ne) for ne in entries_to_update}
             ]
-            updated_entries.extend(entries_to_update)
-            
+            updated_entries.extend(entries_to_update)            
             redis_client.set(redis_key, json.dumps(updated_entries))
             redis_client.hset(REDIS_DATE_MAPPINGS_KEY, date, str(new_entries[0]["date_int"]))
             print(f"✅ Updated {len(entries_to_update)} entries for {date}")
@@ -184,8 +183,12 @@ def main():
         try:
             profile = api.get_user_weight()
             print(f"Hello! Your current weight is {profile.last_weight_kg}kg")
+        except (ConnectionError, TimeoutError) as e:
+            print(f"⚠️ Network error getting weight profile: {e}")
+        except ValueError as e:
+            print(f"⚠️ Data format error: {e}")
         except Exception as e:
-            print(f"⚠️ Error getting weight profile: {e}")
+            print(f"⚠️ Unexpected error getting weight profile: {e}")
 
         today = get_current_date()
         today_str = today.strftime("%Y-%m-%d")
