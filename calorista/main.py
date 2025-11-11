@@ -59,7 +59,8 @@ def create_entry_fingerprint(entry: dict) -> str:
     )
 
 
-def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str
+) -> List[Dict[str, Any]]:
     """Fetch historical entries with duplicate detection, safely handling skipped days"""
     all_entries: List[Dict[str, Any]] = []
     seen_entries = set()
