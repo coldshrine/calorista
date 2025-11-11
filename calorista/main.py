@@ -52,7 +52,11 @@ def create_redis_connection():
 
 def create_entry_fingerprint(entry: dict) -> str:
     """Create a unique fingerprint for an entry to detect duplicates"""
-    return f"{entry.get('food_entry_id', '')}_{entry.get('date_int', '')}_{entry.get('timestamp', '')}"
+    return (
+        f"{entry.get('food_entry_id', '')}_"
+        f"{entry.get('date_int', '')}_"
+        f"{entry.get('timestamp', '')}"
+    )
 
 
 def get_historical_entries(api: FatSecretAPI, start_date: str, end_date: str) -> List[Dict[str, Any]]:
