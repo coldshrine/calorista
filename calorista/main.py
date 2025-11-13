@@ -213,10 +213,11 @@ def main():
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
     finally:
         if "redis_client" in locals():
             redis_client.close()
-
 
 if __name__ == "__main__":
     main()
