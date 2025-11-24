@@ -14,9 +14,6 @@ To use this project, you must [register your application with FatSecret](https:/
 
 Please remember that you need to also whitelist your IP inside your personal account settings.
 
-things to improve - if food entry was deleted/adjusted catch the change and display correct entries on the redis side.
-now it's just stacked appending any entries added.
-
 ## Environment Setup
 
 Create a .env file in the project root:
