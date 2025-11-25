@@ -6,8 +6,6 @@ Demo:
 
 https://calorista.streamlit.app/
 
-![Calorista Icon](./icon.jpg)
-
 ETL pipeline for authenticated fatsecret users that extracts real-time food log data, transforms raw entries with detailed nutritional metadata.
 
 ## 🔑 API Access
@@ -15,9 +13,6 @@ ETL pipeline for authenticated fatsecret users that extracts real-time food log 
 To use this project, you must [register your application with FatSecret](https://platform.fatsecret.com/api/Default.aspx?screen=rapiintro) and obtain your own **API Key** and **API Secret**. This is required to authenticate users and access their food log data via the fatsecret Platform API.
 
 Please remember that you need to also whitelist your IP inside your personal account settings.
-
-things to improve - if food entry was deleted/adjusted catch the change and display correct entries on the redis side.
-now it's just stacked appending any entries added.
 
 ## Environment Setup
 
