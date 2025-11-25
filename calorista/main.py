@@ -11,8 +11,8 @@ import redis
 from dotenv import load_dotenv
 import pytz
 
-from utils.api import FatSecretAPI
-from utils.auth import FatSecretAuth
+from .utils.api import FatSecretAPI
+from .utils.auth import FatSecretAuth
 
 load_dotenv()
 

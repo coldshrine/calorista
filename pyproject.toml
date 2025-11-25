@@ -28,6 +28,12 @@ black = "^25.1.0"
 isort = "^6.0.1"
 autopep8 = "^2.3.2"
 
+[tool.poetry.scripts]
+# Start main Python script as a module
+start-main = "calorista.__main__:main"
+# Start Streamlit app using a custom function
+start-app = "calorista.__main__:run_app"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

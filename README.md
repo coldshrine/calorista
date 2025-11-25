@@ -42,7 +42,15 @@ For a deeper dive, familiarize yourself with [fatsecret API docs](https://platfo
 - **Authentication** → Handles OAuth flow with FatSecret API  
 - **Data Sync** → Fetches historical food entries from a specified start date  
 - **Duplicate Detection** → Uses entry fingerprints to avoid duplicates  
-- **Redis Storage** → Stores data with date-based keys (`food_entries:YYYY-MM-DD`)  
+- **Redis Storage** → Stores data with date-based keys 
+
+Use this command to start the script manually.
+
+```bash
+poetry run start-main
+```
+
+(`food_entries:YYYY-MM-DD`)  
 - **Incremental Updates** → Only updates changed or new entries
 
 ### Streamlit Dashboard (`streamlit_app.py`)
@@ -50,6 +58,12 @@ For a deeper dive, familiarize yourself with [fatsecret API docs](https://platfo
 - **Weight Tracking** → Shows user weight progression  
 - **Interactive Interface** → Date-based filtering and visualization  
 - **Macro Breakdown** → Detailed nutritional information display
+
+Use this command to start the script manually.
+
+```bash
+poetry run start-app
+```
 
 ## 🔧 Planned Improvements
 
