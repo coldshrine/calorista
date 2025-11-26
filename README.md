@@ -2,9 +2,8 @@
 
 Extracts food logs from the FatSecret API for authenticated users, cleans and deduplicates entries, transforms them into structured nutritional records, and loads them into Redis for fast, low-latency access. The data is then visualized in a Streamlit dashboard, providing real-time insights, macro tracking, and historical trends.
 
-Demo:
-
-https://calorista.streamlit.app/
+**Start your nutrition journey today!**  
+🎉 **[Visit Calorista](https://calorista.streamlit.app/)**
 
 ETL pipeline for authenticated fatsecret users that extracts real-time food log data, transforms raw entries with detailed nutritional metadata.
 
