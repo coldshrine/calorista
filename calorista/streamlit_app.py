@@ -340,8 +340,7 @@ class AppSections:
             markers=True,
             title="Daily Calorie Intake Trend"
         )
-        st.plotly_chart(fig, use_container_width=True)
-
+        st.plotly_chart(fig, width='stretch')
         # ✅ Daily Macronutrient Intake Trend (Plotly)
         st.subheader("Daily Macronutrient Intake Trend")
         daily_macros = daily_totals.melt(
@@ -358,7 +357,7 @@ class AppSections:
             markers=True,
             title="Daily Macronutrient Intake Trend"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
         # Aggregated Macros
         st.subheader("Aggregated Macros for the Selected Period")
@@ -431,8 +430,8 @@ class AppSections:
                 title="Total Calories by Week"
             )
             fig.update_layout(xaxis_tickangle=-45)
-            st.plotly_chart(fig, use_container_width=True)
-        
+            st.plotly_chart(fig, width='stretch')
+
         with col2:
             fig = VisualizationComponents.create_line_chart(
                 weekly_totals,
@@ -441,8 +440,7 @@ class AppSections:
                 "Average Daily Calories by Week"
             )
             fig.update_traces(line=dict(color="royalblue", width=3))
-            st.plotly_chart(fig, use_container_width=True)
-        
+            st.plotly_chart(fig, width='stretch')
         st.subheader("Weekly Macronutrient Distribution")
         
         weekly_macros = weekly_totals.melt(
@@ -456,8 +454,7 @@ class AppSections:
         fig = VisualizationComponents.create_macro_bar_chart(
             weekly_macros, "week_label", "Amount (g)", "Macronutrient", "Weekly Macronutrient Distribution"
         )
-        st.plotly_chart(fig, use_container_width=True)
-        
+        st.plotly_chart(fig, width='stretch')
         st.subheader("Weekly Macronutrient Ratios")
         weekly_totals["total_macros"] = (
             weekly_totals["total_carbohydrate"] + 
@@ -488,8 +485,7 @@ class AppSections:
             title="Weekly Macronutrient Ratios"
         )
         fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-        
+        st.plotly_chart(fig, width='stretch')
         st.subheader("Weekly Summary Data")
         display_cols = [
             "week_label", "total_calories", "avg_daily_calories",
@@ -559,8 +555,8 @@ class AppSections:
                 color_continuous_scale="thermal",
                 title="Total Calories by Month"
             )
-            st.plotly_chart(fig, use_container_width=True)
-        
+            st.plotly_chart(fig, width='stretch')
+
         with col2:
             fig = VisualizationComponents.create_line_chart(
                 monthly_totals,
@@ -569,8 +565,7 @@ class AppSections:
                 "Average Daily Calories by Month"
             )
             fig.update_traces(line=dict(color="firebrick", width=3))
-            st.plotly_chart(fig, use_container_width=True)
-        
+            st.plotly_chart(fig, width='stretch')
         st.subheader("Monthly Macronutrient Distribution")
         
         monthly_macros = monthly_totals.melt(
@@ -584,8 +579,7 @@ class AppSections:
         fig = VisualizationComponents.create_macro_bar_chart(
             monthly_macros, "month_label", "Amount (g)", "Macronutrient", "Monthly Macronutrient Distribution"
         )
-        st.plotly_chart(fig, use_container_width=True)
-        
+        st.plotly_chart(fig, width='stretch')
         st.subheader("Monthly Summary Data")
         display_cols = [
             "month_label", "total_calories", "avg_daily_calories",
