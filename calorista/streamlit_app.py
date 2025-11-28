@@ -377,7 +377,7 @@ class AppSections:
 
     def render_weekly_trends_section(self):
         """Renders the weekly trends section"""
-        st.header("📈 Weekly Aggregated Trends (All Historical Data)")
+        st.header("📈 Weekly Aggregated Trends (Historical Data)")
         
         if self.food_df.empty:
             st.info("No data available to calculate weekly trends.")
