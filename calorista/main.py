@@ -1,6 +1,7 @@
 import json
 import os
 import ssl
+import traceback
 from collections import defaultdict
 from datetime import datetime, timedelta, date
 from pathlib import Path
@@ -129,8 +130,8 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
         date_groups[human_date].append(entry)
         loaded_count += 1
 
-    for date, new_entries in date_groups.items():
-        redis_key = f"{REDIS_FOOD_ENTRIES_PREFIX}{date}"
+    for entry_date, new_entries in date_groups.items():
+        redis_key = f"{REDIS_FOOD_ENTRIES_PREFIX}{entry_date}"
 
         existing_entries = []
         if redis_client.exists(redis_key):
@@ -171,8 +172,8 @@ def load_entries_to_redis(redis_client: redis.Redis, entries: List[Dict[str, Any
 
 def main():
     try:
-        BASE_DIR = Path(__file__).resolve().parent.parent
-        token_file = BASE_DIR / "auth_tokens" / "tokens.json"
+        base_dir = Path(__file__).resolve().parent.parent
+        token_file = base_dir / "auth_tokens" / "tokens.json"
         if not token_file.exists():
             print(f"❌ Token file not found at: {token_file}")
             return
@@ -213,7 +214,6 @@ def main():
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
         traceback.print_exc()
     finally:
         if "redis_client" in locals():
